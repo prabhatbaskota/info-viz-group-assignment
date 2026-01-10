@@ -1,0 +1,56 @@
+body {
+    background-color: #f0f2f5;
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.dashboard-header {
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+/* 3-Column Grid for the whole dashboard */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 20px;
+    padding: 20px;
+}
+
+.chart-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* This makes Member 1's card take the full top row */
+.chart-card.wide {
+    grid-column: span 3;
+}
+
+/* This pulls your two SVG charts together inside the wide card */
+.heatmap-flex-container {
+    display: flex;
+    justify-content: center; 
+    gap: 10px; 
+    width: 100%;
+}
+
+.heatmap-tooltip {
+    position: absolute;
+    background-color: white;
+    color: #2c3e50;
+    padding: 10px;
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+    pointer-events: none;
+    z-index: 9999;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}

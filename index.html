@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Youth Health Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+
+    <header class="dashboard-header">
+        <h1>Youth Smoking & Drug Use Analysis</h1>
+        <div id="controls">
+            <label for="gender-filter">Global Gender Filter:</label>
+            <select id="gender-filter">
+                <option value="All">All Genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <section class="chart-card wide">
+            <h2>Smoking & Drug Heatmaps</h2>
+            <div class="heatmap-flex-container">
+                <div id="heatmap-drug"></div>
+                <div id="heatmap-smoke"></div>
+            </div>
+        </section>
+
+        <section class="chart-card">
+            <h3>Prevalence Trends</h3>
+            <div id="line-chart"></div>
+        </section>
+
+        <section class="chart-card">
+            <h3>Peer Influence Correlation</h3>
+            <div id="scatter-plot"></div>
+        </section>
+
+        <section class="chart-card">
+            <div class="card-header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0;">Age Group Comparison</h3>
+                <select id="metric-filter" style="font-size: 11px;">
+                    <option value="Smoking_Prevalence,Drug_Experimentation">Smoking vs Drugs</option>
+                    <option value="Smoking_Prevalence,Peer_Influence">Smoking vs Peer</option>
+                    <option value="Drug_Experimentation,Peer_Influence">Drugs vs Peer</option>
+                </select>
+            </div>
+            <div id="bar-chart"></div>
+        </section>
+
+        <div class="heatmap-tooltip"></div>
+    </main>
+
+    <script src="member_heatmap.js"></script> 
+    <script src="member_line.js"></script>
+    <script src="member_scatter.js"></script>
+    <script src="member_barchart.js"></script> 
+    <script src="main.js"></script> 
+</body>
+</html>
