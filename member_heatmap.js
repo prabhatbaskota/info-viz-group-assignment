@@ -1,8 +1,7 @@
 /**
- * MEMBER 1: HEATMAPS - Final Integrated Version
+ * MEMBER 1: HEATMAPS - Final Integrated Version with Manual Min/Max Legend
  */
-// Increased right margin to 90 to fit percentage labels like "100.0%"
-const margin = { top: 60, right: 140, bottom: 60, left: 70 };
+const margin = { top: 80, right: 100, bottom: 60, left: 80 };
 const width = 450 - margin.left - margin.right; 
 const height = 380 - margin.top - margin.bottom;
 
@@ -37,9 +36,7 @@ function updateHeatmap(data) {
           .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        let tooltip = d3.select(".heatmap-tooltip");
-
-        // 1. Draw Heatmap Cells
+        // Draw Cells
         svg.selectAll("rect.cell")
             .data(heatmapData).enter().append("rect")
             .attr("x", d => xScale(d.gender))
@@ -50,19 +47,20 @@ function updateHeatmap(data) {
             .attr("stroke", "#fff")
             .on("mouseover", function(event, d) {
                 d3.select(this).attr("stroke", "#000").attr("stroke-width", 2);
-                tooltip.style("display", "block")
+                d3.select(".heatmap-tooltip").style("display", "block")
                     .html(`<strong>${titleText}</strong><br>Age: ${d.age}<br>Avg: ${d.avg.toFixed(1)}%`);
             })
             .on("mousemove", function(event) {
-                tooltip.style("left", (event.clientX + 15) + "px")
-                       .style("top", (event.clientY - 15) + "px");
+                d3.select(".heatmap-tooltip")
+                    .style("left", (event.clientX + 15) + "px")
+                    .style("top", (event.clientY - 15) + "px");
             })
             .on("mouseout", function() {
                 d3.select(this).attr("stroke", "#fff").attr("stroke-width", 1);
-                tooltip.style("display", "none");
+                d3.select(".heatmap-tooltip").style("display", "none");
             });
 
-        // 2. Add Percentage Labels inside Cells
+        // Value labels inside cells
         svg.selectAll("text.val")
             .data(heatmapData).enter().append("text")
             .attr("x", d => xScale(d.gender) + xScale.bandwidth()/2)
@@ -70,60 +68,68 @@ function updateHeatmap(data) {
             .attr("text-anchor", "middle").attr("dominant-baseline", "central")
             .style("font-size", "11px").style("font-weight", "bold")
             .style("fill", d => ((d.avg - minVal) / (maxVal - minVal || 1)) < 0.45 ? "#fff" : "#000")
-            .style("pointer-events", "none")
             .text(d => d.avg.toFixed(1));
 
-        // 3. LEGEND IMPLEMENTATION
-        const legendX = width + 15;
+        // --- LEGEND WITH MANUAL MIN/MAX LABELS ---
+        const legendWidth = 15;
         const gradID = `grad-${containerID.replace("#","")}`;
         const defs = svg.append("defs");
         const gradient = defs.append("linearGradient").attr("id", gradID).attr("x1","0%").attr("x2","0%").attr("y1","100%").attr("y2","0%");
         
-        d3.range(10).forEach(i => {
-            const offset = i / 9;
-            gradient.append("stop")
-                .attr("offset", `${offset * 100}%`)
-                .attr("stop-color", colorScale(minVal + offset * (maxVal - minVal)));
-        });
+        gradient.append("stop").attr("offset", "0%").attr("stop-color", colorScale(minVal));
+        gradient.append("stop").attr("offset", "100%").attr("stop-color", colorScale(maxVal));
 
-        // Legend Rectangle
+        // Color Rect
         svg.append("rect")
-            .attr("x", legendX)
-            .attr("width", 15)
+            .attr("x", width + 20)
+            .attr("y", 0)
+            .attr("width", legendWidth)
             .attr("height", height)
             .style("fill", `url(#${gradID})`);
 
-        // Legend Axis (The visible scale labels)
-        const legendScale = d3.scaleLinear()
-            .domain([minVal, maxVal])
-            .range([height, 0]);
+        // Max Value Label (Top)
+        svg.append("text")
+            .attr("x", width + 40)
+            .attr("y", 5)
+            .style("font-size", "12px")
+            .style("font-weight", "bold")
+            .text(maxVal.toFixed(1) + "%");
 
-        const legendAxis = d3.axisRight(legendScale)
-            .ticks(5)
-            .tickFormat(d => d.toFixed(1) + "%");
+        // Min Value Label (Bottom)
+        svg.append("text")
+            .attr("x", width + 40)
+            .attr("y", height)
+            .style("font-size", "12px")
+            .style("font-weight", "bold")
+            .attr("dominant-baseline", "baseline")
+            .text(minVal.toFixed(1) + "%");
 
-        svg.append("g")
-            .attr("transform", `translate(${legendX + 15}, 0)`)
-            .call(legendAxis)
-            .select(".domain").remove();
+        // Legend Title
+        svg.append("text")
+            .attr("x", width + 30)
+            .attr("y", -10)
+            .attr("text-anchor", "middle")
+            .style("font-size", "11px")
+            .style("font-weight", "bold")
+            .text("Scale");
 
-        // 4. AXES & TITLES
+        // --- AXES & CENTERED TITLE ---
         svg.append("g").call(d3.axisLeft(yScale));
         svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale));
 
-        // Chart Labels
-        svg.append("text").attr("transform", "rotate(-90)").attr("y", -margin.left + 25).attr("x", -(height / 2)).attr("text-anchor", "middle").style("font-size", "12px").style("font-weight", "bold").text("Age Group");
-        svg.append("text").attr("x", width / 2).attr("y", height + 40).attr("text-anchor", "middle").style("font-size", "12px").style("font-weight", "bold").text("Gender");
-        
-        // Centered Internal Title
+        // Centered Header logic
         const visualCenter = (width + margin.left + margin.right) / 2 - margin.left;
         svg.append("text")
             .attr("x", visualCenter)
-            .attr("y", -30)
+            .attr("y", -40)
             .attr("text-anchor", "middle")
             .style("font-size", "16px")
             .style("font-weight", "bold")
             .text(titleText);
+            
+        // Axis Labels
+        svg.append("text").attr("transform", "rotate(-90)").attr("y", -margin.left + 35).attr("x", -(height/2)).attr("text-anchor", "middle").style("font-size", "12px").text("Age Group");
+        svg.append("text").attr("x", width/2).attr("y", height + 40).attr("text-anchor", "middle").style("font-size", "12px").text("Gender");
     }
 
     buildHeatmap("#heatmap-smoke", "Smoking_Prevalence", "Smoking Prevalence", d3.interpolateViridis);
