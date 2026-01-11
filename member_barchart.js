@@ -1,5 +1,5 @@
 /**
- * Member 2 — Dynamic Grouped Bar Chart
+ * Member 2 — Dynamic Grouped Bar Chart (Final Tooltip Fix)
  */
 function updateBarChart(data, keys) {
     const container = d3.select("#bar-chart");
@@ -11,7 +11,7 @@ function updateBarChart(data, keys) {
     }
     container.selectAll("*").remove();
 
-    // 2. Fixed Dimensions (Prevents the "0 width" bug)
+    // 2. Fixed Dimensions
     const margin = { top: 60, right: 30, bottom: 70, left: 70 };
     const width = 450 - margin.left - margin.right;
     const height = 350 - margin.top - margin.bottom;
@@ -32,7 +32,6 @@ function updateBarChart(data, keys) {
         return;
     }
 
-    // Default keys if none provided
     const activeKeys = (keys && keys.length === 2) ? keys : ["Smoking_Prevalence", "Drug_Experimentation"];
 
     // 5. SCALES
@@ -68,11 +67,17 @@ function updateBarChart(data, keys) {
         .on("mouseover", function(event, d) {
             d3.select(".heatmap-tooltip")
                 .style("display", "block")
-                .html(`<strong>Age: ${d.ageGroup}</strong><br>${d.key.replace(/_/g," ")}: ${d.value.toFixed(1)}%`)
-                .style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 20) + "px");
+                .html(`<strong>Age: ${d.ageGroup}</strong><br>${d.key.replace(/_/g," ")}: ${d.value.toFixed(1)}%`);
         })
-        .on("mouseout", () => d3.select(".heatmap-tooltip").style("display", "none"));
+        .on("mousemove", function(event) {
+            // FIX: Use clientX/Y to match 'position: fixed' in CSS
+            d3.select(".heatmap-tooltip")
+                .style("left", (event.clientX + 15) + "px")
+                .style("top", (event.clientY - 15) + "px");
+        })
+        .on("mouseout", () => {
+            d3.select(".heatmap-tooltip").style("display", "none");
+        });
 
     // 7. AXES
     svg.append("g")
@@ -85,8 +90,8 @@ function updateBarChart(data, keys) {
     svg.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%"));
 
     // 8. AXIS LABELS
-    svg.append("text").attr("x", width/2).attr("y", height + 60).attr("text-anchor", "middle").style("font-size", "12px").text("Age Groups");
-    svg.append("text").attr("transform", "rotate(-90)").attr("y", -50).attr("x", -height/2).attr("text-anchor", "middle").style("font-size", "12px").text("Prevalence %");
+    svg.append("text").attr("x", width/2).attr("y", height + 60).attr("text-anchor", "middle").style("font-size", "12px").style("font-weight", "bold").text("Age Groups");
+    svg.append("text").attr("transform", "rotate(-90)").attr("y", -50).attr("x", -height/2).attr("text-anchor", "middle").style("font-size", "12px").style("font-weight", "bold").text("Prevalence %");
 
     // 9. LEGEND
     const legend = svg.append("g")

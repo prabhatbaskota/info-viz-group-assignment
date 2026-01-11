@@ -1,22 +1,22 @@
-body {
-    background-color: #f0f2f5;
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
+body { 
+    background-color: #f0f2f5; 
+    margin: 0; 
+    font-family: 'Segoe UI', sans-serif; 
 }
 
-.dashboard-header {
-    background: #2c3e50;
-    color: white;
-    padding: 20px;
-    text-align: center;
+.dashboard-header { 
+    background: #2c3e50; 
+    color: white; 
+    padding: 20px; 
+    text-align: center; 
 }
 
-/* 3-Column Grid for the whole dashboard */
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr); 
     gap: 20px;
     padding: 20px;
+    overflow: visible;
 }
 
 .chart-card {
@@ -24,33 +24,48 @@ body {
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     padding: 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    transition: transform 0.3s ease;
+    position: relative;
+    z-index: 1;
+    /* Allows legend numbers to show outside the SVG boundary if needed */
+    overflow: visible; 
 }
 
-/* This makes Member 1's card take the full top row */
-.chart-card.wide {
-    grid-column: span 3;
-}
-
-/* This pulls your two SVG charts together inside the wide card */
-.heatmap-flex-container {
-    display: flex;
-    justify-content: center; 
-    gap: 10px; 
+/* This centers your card title to match the dashboard header */
+.chart-card h3 {
+    text-align: center;
     width: 100%;
+    margin-top: 5px;
+    margin-bottom: 15px;
+}
+
+.chart-card:hover {
+    transform: scale(1.02);
+    z-index: 100;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+}
+
+.chart-card.wide { grid-column: span 3; }
+
+/* Centers the two heatmaps side-by-side */
+.heatmap-flex-container { 
+    display: flex; 
+    justify-content: center; 
+    gap: 50px; 
+    width: 100%; 
+    overflow: visible;
 }
 
 .heatmap-tooltip {
-    position: absolute;
-    background-color: white;
-    color: #2c3e50;
-    padding: 10px;
-    border: 1px solid #bdc3c7;
-    border-radius: 5px;
-    pointer-events: none;
-    z-index: 9999;
+    position: fixed; 
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    pointer-events: none; 
     display: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    font-size: 12px;
 }
