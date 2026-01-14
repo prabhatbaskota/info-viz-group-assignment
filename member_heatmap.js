@@ -10,6 +10,8 @@ function updateHeatmap(data) {
 
     const ageGroups = Array.from(new Set(data.map(d => d.Age_Group))).sort();
     const genders = ["Male", "Female"];
+    let selectedKey = null; // stores currently selected cell
+
 
     function buildHeatmap(containerID, valueField, titleText, interpolator) {
         const heatmapData = [];
@@ -37,28 +39,100 @@ function updateHeatmap(data) {
 
         // --- DRAW CELLS ---
         svg.selectAll("rect.cell")
-            .data(heatmapData).enter().append("rect")
-            .attr("class", "cell")
-            .attr("x", d => xScale(d.gender))
-            .attr("y", d => yScale(d.age))
-            .attr("width", xScale.bandwidth())
-            .attr("height", yScale.bandwidth())
-            .attr("fill", d => colorScale(d.avg))
-            .attr("stroke", "#fff")
-            .on("mouseover", function(event, d) {
-                d3.select(this).attr("stroke", "#000").attr("stroke-width", 2);
-                d3.select(".heatmap-tooltip").style("display", "block")
-                    .html(`<strong>${titleText}</strong><br>Age: ${d.age}<br>Avg: ${d.avg.toFixed(1)}%`);
-            })
-            .on("mousemove", function(event) {
-                d3.select(".heatmap-tooltip")
-                    .style("left", (event.clientX + 15) + "px")
-                    .style("top", (event.clientY - 15) + "px");
-            })
-            .on("mouseout", function() {
-                d3.select(this).attr("stroke", "#fff").attr("stroke-width", 1);
-                d3.select(".heatmap-tooltip").style("display", "none");
-            });
+        .data(heatmapData).enter().append("rect")
+        .attr("class", "cell")
+        .attr("data-key", d => `${d.age}-${d.gender}`) // shared key for linking
+        .attr("x", d => xScale(d.gender))
+        .attr("y", d => yScale(d.age))
+        .attr("width", xScale.bandwidth())
+        .attr("height", yScale.bandwidth())
+        .attr("fill", d => colorScale(d.avg))
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1)
+        .attr("data-x", d => xScale(d.gender))
+        .attr("data-y", d => yScale(d.age))
+        .attr("data-width", xScale.bandwidth())
+        .attr("data-height", yScale.bandwidth())
+        
+        // --- CLICK BASED PERSISTENT BRUSHING ---
+        .on("click", function(event, d) {
+            const key = `${d.age}-${d.gender}`;
+            
+            // toggle selection
+            if (selectedKey === key) {
+                selectedKey = null;
+            } else {
+                selectedKey = key;
+            }
+
+            // reset all cells in both heatmaps
+            d3.selectAll("rect.cell")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1);
+
+            // highlight selected cell in both heatmaps if any
+            if (selectedKey) {
+                d3.selectAll(`rect.cell[data-key='${selectedKey}']`)
+                    .attr("stroke", "#000")
+                    .attr("stroke-width", 3);
+            }
+        })
+
+        // --- HOVER TOOLTIP ---
+        // --- HOVER TOOLTIP + ZOOM EFFECT ---
+        .on("mouseover", function(event, d) {
+            const key = `${d.age}-${d.gender}`;
+            
+            // temporary highlight if not selected
+            if (selectedKey !== key) {
+                d3.selectAll(`rect.cell[data-key='${key}']`)
+                    .attr("stroke", "#666")
+                    .attr("stroke-width", 2)
+                    .transition()
+                    .duration(150)
+                    .attr("width", xScale.bandwidth() * 1.2)
+                    .attr("height", yScale.bandwidth() * 1.2)
+                    .attr("x", xScale(d.gender) - xScale.bandwidth() * 0.1)
+                    .attr("y", yScale(d.age) - yScale.bandwidth() * 0.1);
+            }
+
+            // show tooltip
+            d3.select(".heatmap-tooltip")
+                .style("display", "block")
+                .html(
+                    `<strong>${titleText}</strong><br>
+                    Age: ${d.age}<br>
+                    Gender: ${d.gender}<br>
+                    Avg: ${d.avg.toFixed(1)}%`
+                );
+        })
+        .on("mousemove", function(event) {
+            d3.select(".heatmap-tooltip")
+                .style("left", (event.clientX + 15) + "px")
+                .style("top", (event.clientY - 15) + "px");
+        })
+        .on("mouseout", function(event, d) {
+            const key = `${d.age}-${d.gender}`;
+
+            // remove temporary highlight and reset size
+            if (selectedKey !== key) {
+                d3.selectAll(`rect.cell[data-key='${key}']`)
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 1)
+                    .transition()
+                    .duration(150)
+                    .attr("width", xScale.bandwidth())
+                    .attr("height", yScale.bandwidth())
+                    .attr("x", xScale(d.gender))
+                    .attr("y", yScale(d.age));
+            }
+
+            // hide tooltip
+            d3.select(".heatmap-tooltip").style("display", "none");
+        });
+
+
+
 
         // --- VALUE LABELS ---
         svg.selectAll("text.val")
@@ -101,3 +175,20 @@ function updateHeatmap(data) {
     buildHeatmap("#heatmap-smoke", "Smoking_Prevalence", "Smoking Prevalence", d3.interpolateViridis);
     buildHeatmap("#heatmap-drug", "Drug_Experimentation", "Drug Experimentation", d3.interpolateMagma);
 }
+
+// CLICK OUTSIDE TO DESELECT
+document.addEventListener("click", function(event) {
+    if (!event.target.classList.contains("cell")) {
+        selectedKey = null;
+
+        d3.selectAll("rect.cell")
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 1)
+            .transition()
+            .duration(150)
+            .attr("x", function() { return +this.getAttribute("data-x"); })
+            .attr("y", function() { return +this.getAttribute("data-y"); })
+            .attr("width", function() { return +this.getAttribute("data-width"); })
+            .attr("height", function() { return +this.getAttribute("data-height"); });
+    }
+});
