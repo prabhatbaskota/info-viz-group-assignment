@@ -1,6 +1,5 @@
-/**
- * MEMBER 1: HEATMAPS - Glow & Cross-Brushing Version
- */
+// heatmap.js - Simplified version with only tooltip, no cross-brushing
+
 const margin = { top: 80, right: 100, bottom: 60, left: 80 };
 const width = 450 - margin.left - margin.right; 
 const height = 380 - margin.top - margin.bottom;
@@ -40,7 +39,6 @@ function updateHeatmap(data) {
         svg.selectAll("rect.cell")
             .data(heatmapData).enter().append("rect")
             .attr("class", "cell")
-            .attr("data-age", d => d.age) 
             .attr("x", d => xScale(d.gender))
             .attr("y", d => yScale(d.age))
             .attr("width", xScale.bandwidth())
@@ -48,7 +46,6 @@ function updateHeatmap(data) {
             .attr("fill", d => colorScale(d.avg))
             .attr("stroke", "#fff")
             .on("mouseover", function(event, d) {
-                if (window.highlightData) window.highlightData("age", d.age);
                 d3.select(this).attr("stroke", "#000").attr("stroke-width", 2);
                 d3.select(".heatmap-tooltip").style("display", "block")
                     .html(`<strong>${titleText}</strong><br>Age: ${d.age}<br>Avg: ${d.avg.toFixed(1)}%`);
@@ -59,7 +56,6 @@ function updateHeatmap(data) {
                     .style("top", (event.clientY - 15) + "px");
             })
             .on("mouseout", function() {
-                if (window.resetHighlight) window.resetHighlight();
                 d3.select(this).attr("stroke", "#fff").attr("stroke-width", 1);
                 d3.select(".heatmap-tooltip").style("display", "none");
             });
@@ -68,7 +64,6 @@ function updateHeatmap(data) {
         svg.selectAll("text.val")
             .data(heatmapData).enter().append("text")
             .attr("class", "val-text")
-            .attr("data-age", d => d.age) 
             .attr("x", d => xScale(d.gender) + xScale.bandwidth()/2)
             .attr("y", d => yScale(d.age) + yScale.bandwidth()/2)
             .attr("text-anchor", "middle").attr("dominant-baseline", "central")

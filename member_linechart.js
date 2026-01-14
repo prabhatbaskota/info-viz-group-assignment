@@ -1,6 +1,5 @@
-/**
- * Member: Line Chart - Interactive Cross-Brushing Version
- */
+// linechart.js - Simplified version with only tooltip, no cross-brushing
+
 let lineSvg, lineX, lineY, lineFocus;
 
 function updateLineChart(data, filterAge = null) {

@@ -1,3 +1,5 @@
+// main.js - Simplified version without cross-brushing
+
 let globalData = [];
 
 d3.csv("data.csv").then(data => {
@@ -42,35 +44,3 @@ function updateAllCharts(data) {
     // Placeholder for Member 4
     if (typeof updateScatterPlot === "function") updateScatterPlot(data);
 }
-
-/**
- * CROSS-BRUSHING LOGIC
- * These functions are called by mouse events in the Heatmap and Bar Chart
- */
-
-// 1. Highlight function
-window.highlightData = function(category, value) {
-    // Apply CSS dimming to the background
-    d3.select("body").classed("is-brushed", true);
-
-    // Highlight elements matching the hovered age/year
-    d3.selectAll(`[data-age='${value}']`).classed("is-active", true);
-    d3.selectAll(`[data-year='${value}']`).classed("is-active", true);
-
-    // INTEGRATION: Morph Line Chart to show specific trend
-    if (category === "age" && typeof updateLineChart === "function") {
-        updateLineChart(getFilteredData(), value);
-    }
-};
-
-// 2. Reset function
-window.resetHighlight = function() {
-    // Remove CSS dimming and highlights
-    d3.select("body").classed("is-brushed", false);
-    d3.selectAll(".is-active").classed("is-active", false);
-
-    // INTEGRATION: Reset Line Chart to the average trend
-    if (typeof updateLineChart === "function") {
-        updateLineChart(getFilteredData(), null);
-    }
-};
