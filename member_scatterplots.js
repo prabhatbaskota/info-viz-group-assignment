@@ -1,199 +1,349 @@
-// -----------------------------
-// Globals
-let showTrendLine = true;
-let svg, plotG, xAxisG, yAxisG;
-let zoomBehavior;
-const vizSelector = "#scatter-plot";
+// member_scatterplots.js
+/* global d3 */
 
-// Tooltip
-let tooltip = d3.select("body")
-  .append("div")
-  .attr("class", "heatmap-tooltip")
-  .style("display", "none");
+(function () {
+  const containerSelector = "#scatter-plot";
+  let showTrendLine = true;
 
-// -----------------------------
-// Main update function
-function updateScatterPlot(data) {
+  // Tooltip appended to BODY (like your old working version)
+  // This avoids clipping and layout conflicts.
+  const tooltip = d3
+    .select("body")
+    .selectAll(".scatter-tooltip")
+    .data([0])
+    .join("div")
+    .attr("class", "scatter-tooltip")
+    .style("position", "absolute")
+    .style("display", "none")
+    .style("pointer-events", "none")
+    .style("z-index", 10000);
 
-  d3.select(vizSelector).selectAll("svg").remove();
+  window.updateScatterPlot = function updateScatterPlot(rawData) {
+    const container = d3.select(containerSelector);
+    if (container.empty()) return;
 
-  const margin = { top: 40, right: 120, bottom: 60, left: 70 },
-        totalWidth = 450,
-        totalHeight = 350,
-        width = totalWidth - margin.left - margin.right,
-        height = totalHeight - margin.top - margin.bottom;
+    container.selectAll("*").remove();
 
-  svg = d3.select(vizSelector)
-    .append("svg")
-    .attr("width", totalWidth)
-    .attr("height", totalHeight);
+    // ---------- Controls ----------
+    const controls = container
+      .append("div")
+      .style("display", "flex")
+      .style("justify-content", "center")
+      .style("gap", "10px")
+      .style("margin", "0 0 8px 0");
 
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+    const btnReset = controls
+      .append("button")
+      .text("Reset View")
+      .style("cursor", "pointer")
+      .style("border", "none")
+      .style("padding", "6px 10px")
+      .style("border-radius", "8px")
+      .style("font-size", "12px")
+      .style("font-weight", "600");
 
-  plotG = g.append("g");
-  xAxisG = g.append("g").attr("transform", `translate(0,${height})`);
-  yAxisG = g.append("g");
+    const btnTrend = controls
+      .append("button")
+      .text(showTrendLine ? "Hide Trend Line" : "Show Trend Line")
+      .style("cursor", "pointer")
+      .style("border", "none")
+      .style("padding", "6px 10px")
+      .style("border-radius", "8px")
+      .style("font-size", "12px")
+      .style("font-weight", "600");
 
-  // Variables (FIXED)
-  const xVar = "Peer_Influence";
-  const yVar = "Smoking_Prevalence";
-  const colorVar = "Gender";
+    const statsRow = container
+      .append("div")
+      .style("font-size", "12px")
+      .style("color", "#34495e")
+      .style("margin-bottom", "6px")
+      .style("text-align", "center");
 
-  // Scales
-  const xScale = d3.scaleLinear()
-    .domain([0, 100])
-    .range([0, width])
-    .nice();
+    // ---------- Size ----------
+    const cw = Math.max(320, container.node().getBoundingClientRect().width);
+    const totalWidth = Math.min(560, cw);
+    const totalHeight = 300;
 
-  const yScale = d3.scaleLinear()
-    .domain([0, 100])
-    .range([height, 0])
-    .nice();
+    const margin = { top: 18, right: 95, bottom: 50, left: 60 };
+    const width = totalWidth - margin.left - margin.right;
+    const height = totalHeight - margin.top - margin.bottom;
 
-  xAxisG.call(d3.axisBottom(xScale));
-  yAxisG.call(d3.axisLeft(yScale));
+    const svg = container
+      .append("svg")
+      .attr("width", totalWidth)
+      .attr("height", totalHeight);
 
-  // Axis labels
-  g.append("text")
-    .attr("x", width / 2)
-    .attr("y", height + 45)
-    .attr("text-anchor", "middle")
-    .style("font-weight", "600")
-    .text("Peer Influence (%)");
+    const g = svg
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  g.append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -height / 2)
-    .attr("y", -50)
-    .attr("text-anchor", "middle")
-    .style("font-weight", "600")
-    .text("Smoking Prevalence (%)");
+    // ---------- Data ----------
+    const data = (rawData || [])
+      .map((d) => ({
+        ...d,
+        Year: d.Year != null ? +d.Year : null,
+        Peer_Influence: +d.Peer_Influence,
+        Smoking_Prevalence: +d.Smoking_Prevalence,
+        Drug_Experimentation: +d.Drug_Experimentation,
+      }))
+      .filter(
+        (d) =>
+          Number.isFinite(d.Peer_Influence) &&
+          Number.isFinite(d.Smoking_Prevalence)
+      );
 
-  // Color scale
-  const categories = [...new Set(data.map(d => d[colorVar]))];
-  const colorScale = d3.scaleOrdinal()
-    .domain(categories)
-    .range(d3.schemeCategory10);
+    if (data.length === 0) {
+      statsRow.text("No data available for scatterplot.");
+      return;
+    }
 
-  // Points
-  plotG.selectAll(".dot")
-    .data(data)
-    .enter()
-    .append("circle")
-    .attr("class", "dot")
-    .attr("r", 4)
-    .attr("cx", d => xScale(+d[xVar]))
-    .attr("cy", d => yScale(+d[yVar]))
-    .attr("fill", d => colorScale(d[colorVar]))
-    .style("opacity", 0.7)
-    .on("mouseover", (e, d) => {
-      tooltip
-        .style("display", "block")
-        .html(`
-          <strong>Peer Influence:</strong> ${d.Peer_Influence}%<br>
-          <strong>Smoking:</strong> ${d.Smoking_Prevalence}%<br>
-          <strong>Gender:</strong> ${d.Gender}<br>
-          <strong>Age Group:</strong> ${d.Age_Group}
-        `);
-    })
-    .on("mousemove", e => {
-      tooltip
-        .style("left", e.pageX + 10 + "px")
-        .style("top", e.pageY - 20 + "px");
-    })
-    .on("mouseout", () => {
-      tooltip.style("display", "none");
-    });
+    const xVar = "Peer_Influence";
+    const yVar = "Smoking_Prevalence";
+    const colorVar = "Gender";
 
-  // Trend line
-  if (showTrendLine) drawTrendLine(data, xScale, yScale);
+    // ---------- Smart domains ----------
+    function paddedExtent(ext) {
+      const span = (ext[1] - ext[0]) || 1;
+      return [ext[0] - span * 0.08, ext[1] + span * 0.08];
+    }
 
-  // Zoom
-  zoomBehavior = d3.zoom()
-    .scaleExtent([0.8, 5])
-    .on("zoom", e => {
-      const newX = e.transform.rescaleX(xScale);
-      const newY = e.transform.rescaleY(yScale);
+    const xMax = d3.max(data, (d) => d[xVar]);
+    let xDomain;
+    if (xMax <= 15) xDomain = [0, 15];
+    else if (xMax <= 55) xDomain = [0, 60];
+    else if (xMax <= 105) xDomain = [0, 100];
+    else xDomain = paddedExtent(d3.extent(data, (d) => d[xVar]));
 
-      xAxisG.call(d3.axisBottom(newX));
-      yAxisG.call(d3.axisLeft(newY));
+    const yExt = d3.extent(data, (d) => d[yVar]);
+    const yPercentish = yExt[0] >= 0 && yExt[1] <= 100;
+    const yDomain = yPercentish ? [0, 100] : paddedExtent(yExt);
 
-      plotG.selectAll(".dot")
-        .attr("cx", d => newX(+d[xVar]))
-        .attr("cy", d => newY(+d[yVar]));
+    const xScale = d3.scaleLinear().domain(xDomain).range([0, width]).nice();
+    const yScale = d3.scaleLinear().domain(yDomain).range([height, 0]).nice();
 
-      updateTrendLine(newX, newY, data);
-    });
+    // ---------- Axes ----------
+    const xAxisG = g.append("g").attr("transform", `translate(0,${height})`);
+    const yAxisG = g.append("g");
 
-  svg.call(zoomBehavior);
-}
+    xAxisG.call(d3.axisBottom(xScale).ticks(5));
+    yAxisG.call(d3.axisLeft(yScale).ticks(5));
 
-// -----------------------------
-// Trend line helpers
-function drawTrendLine(data, xScale, yScale) {
-  plotG.selectAll(".trend-line").remove();
+    g.append("text")
+      .attr("class", "sc-x-label")
+      .attr("x", width / 2)
+      .attr("y", height + 40)
+      .attr("text-anchor", "middle")
+      .text("Peer Influence (%)");
 
-  const lr = linearRegression(
-    data.map(d => +d.Peer_Influence),
-    data.map(d => +d.Smoking_Prevalence)
-  );
+    g.append("text")
+      .attr("class", "sc-y-label")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", -45)
+      .attr("text-anchor", "middle")
+      .text("Smoking Prevalence (%)");
 
-  const xMin = 0;
-  const xMax = 100;
+    // ---------- Clip ----------
+    svg
+      .append("defs")
+      .append("clipPath")
+      .attr("id", "scatter-clip")
+      .append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", width)
+      .attr("height", height);
 
-  const lineData = [
-    { x: xMin, y: lr.predict(xMin) },
-    { x: xMax, y: lr.predict(xMax) }
-  ];
+    const plotG = g.append("g").attr("clip-path", "url(#scatter-clip)");
 
-  plotG.append("path")
-    .datum(lineData)
-    .attr("class", "trend-line")
-    .attr("d", d3.line()
-      .x(d => xScale(d.x))
-      .y(d => yScale(d.y))
-    )
-    .attr("stroke", "#e74c3c")
-    .attr("stroke-width", 2)
-    .attr("fill", "none")
-    .style("stroke-dasharray", "6 4");
-}
+    // ---------- Color + Legend ----------
+    const categories = Array.from(new Set(data.map((d) => d[colorVar] || "Unknown")));
+    const colorScale = d3.scaleOrdinal().domain(categories).range(d3.schemeTableau10);
 
-function updateTrendLine(newX, newY, data) {
-  const path = plotG.select(".trend-line");
-  if (path.empty()) return;
+    const legend = g.append("g").attr("transform", `translate(${width + 10}, 5)`);
 
-  const lr = linearRegression(
-    data.map(d => +d.Peer_Influence),
-    data.map(d => +d.Smoking_Prevalence)
-  );
+    legend
+      .selectAll("g")
+      .data(categories)
+      .join("g")
+      .attr("transform", (d, i) => `translate(0, ${i * 18})`)
+      .each(function (cat) {
+        const row = d3.select(this);
+        row.append("rect")
+          .attr("width", 10)
+          .attr("height", 10)
+          .attr("rx", 2)
+          .attr("fill", colorScale(cat));
+        row.append("text")
+          .attr("x", 14)
+          .attr("y", 9)
+          .style("font-size", "11px")
+          .style("font-weight", "600")
+          .text(cat);
+      });
 
-  const lineData = [
-    { x: 0, y: lr.predict(0) },
-    { x: 100, y: lr.predict(100) }
-  ];
+    // ---------- Correlation ----------
+    const r = pearsonR(data.map((d) => d[xVar]), data.map((d) => d[yVar]));
+    const strength =
+      Math.abs(r) >= 0.7 ? "Strong" :
+      Math.abs(r) >= 0.4 ? "Moderate" :
+      Math.abs(r) >= 0.2 ? "Weak" : "Very Weak";
 
-  path.datum(lineData)
-    .attr("d", d3.line()
-      .x(d => newX(d.x))
-      .y(d => newY(d.y))
+    statsRow.html(
+      `<span style="font-weight:700;">Correlation (r):</span> ${fmt3(r)} &nbsp; | &nbsp; ` +
+      `<span style="font-weight:700;">Points:</span> ${data.length} &nbsp; | &nbsp; ` +
+      `<span style="font-weight:700;">Trend Strength:</span> ${strength}`
     );
-}
 
-// -----------------------------
-// Linear Regression
-function linearRegression(x, y) {
-  const n = x.length;
-  const sumX = d3.sum(x);
-  const sumY = d3.sum(y);
-  const sumXY = d3.sum(x.map((v, i) => v * y[i]));
-  const sumX2 = d3.sum(x.map(v => v * v));
+    // ---------- Points ----------
+    const dots = plotG
+      .selectAll("circle.dot")
+      .data(data)
+      .join("circle")
+      .attr("class", "dot")
+      .attr("r", 4)
+      .attr("cx", (d) => xScale(d[xVar]))
+      .attr("cy", (d) => yScale(d[yVar]))
+      .attr("fill", (d) => colorScale(d[colorVar] || "Unknown"))
+      .attr("stroke", "white")
+      .attr("stroke-width", 0.6)
+      .attr("opacity", 0.75);
 
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
+    // Tooltip position: ABOVE cursor (like your old code)
+    function moveTooltip(event) {
+      tooltip
+        .style("left", `${event.pageX + 12}px`)
+        .style("top", `${event.pageY - 28}px`);
+    }
 
-  return {
-    predict: x => slope * x + intercept
+    dots
+      .on("mouseover", (event, d) => {
+        tooltip
+          .style("display", "block")
+          .html(
+            `<strong>Gender:</strong> ${d.Gender ?? "Unknown"}<br>` +
+            (d.Year ? `<strong>Year:</strong> ${d.Year}<br>` : "") +
+            `<strong>Age Group:</strong> ${d.Age_Group ?? "N/A"}<br>` +
+            `<strong>Peer Influence:</strong> ${fmt1(d.Peer_Influence)}%<br>` +
+            `<strong>Smoking Prevalence:</strong> ${fmt1(d.Smoking_Prevalence)}%<br>` +
+            (Number.isFinite(d.Drug_Experimentation)
+              ? `<strong>Drug Experimentation:</strong> ${fmt1(d.Drug_Experimentation)}%`
+              : "")
+          );
+        moveTooltip(event);
+      })
+      .on("mousemove", (event) => {
+        moveTooltip(event);
+      })
+      .on("mouseout", () => {
+        tooltip.style("display", "none");
+      });
+
+    // ---------- Trendline ----------
+    const trendPath = plotG
+      .append("path")
+      .attr("class", "trend-line")
+      .style("pointer-events", "none");
+
+    const renderTrend = (xS, yS) => {
+      trendPath.attr("display", showTrendLine ? null : "none");
+      if (!showTrendLine) return;
+
+      const lr = linearRegression(
+        data.map((d) => d[xVar]),
+        data.map((d) => d[yVar])
+      );
+
+      const x0 = xS.domain()[0];
+      const x1 = xS.domain()[1];
+
+      const lineData = [
+        { x: x0, y: lr.predict(x0) },
+        { x: x1, y: lr.predict(x1) },
+      ];
+
+      trendPath
+        .datum(lineData)
+        .attr("d", d3.line().x((p) => xS(p.x)).y((p) => yS(p.y)))
+        .attr("fill", "none")
+        .attr("stroke", "#e74c3c")
+        .attr("stroke-width", 2)
+        .style("stroke-dasharray", "6 4")
+        .attr("opacity", 0.9);
+    };
+
+    renderTrend(xScale, yScale);
+
+    // ---------- Zoom (overlay behind points, so hover works!) ----------
+    // This is the KEY: zoom overlay captures drag/zoom, points keep hover.
+    const zoomOverlay = g
+      .insert("rect", ":first-child")
+      .attr("class", "zoom-overlay")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("fill", "transparent")
+      .style("pointer-events", "all");
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.9, 6])
+      .on("zoom", (event) => {
+        const t = event.transform;
+        const newX = t.rescaleX(xScale);
+        const newY = t.rescaleY(yScale);
+
+        xAxisG.call(d3.axisBottom(newX).ticks(5));
+        yAxisG.call(d3.axisLeft(newY).ticks(5));
+
+        dots
+          .attr("cx", (d) => newX(d[xVar]))
+          .attr("cy", (d) => newY(d[yVar]));
+
+        renderTrend(newX, newY);
+
+        tooltip.style("display", "none");
+      });
+
+    zoomOverlay.call(zoom);
+
+    btnReset.on("click", () => {
+      zoomOverlay.transition().duration(350).call(zoom.transform, d3.zoomIdentity);
+    });
+
+    btnTrend.on("click", () => {
+      showTrendLine = !showTrendLine;
+      btnTrend.text(showTrendLine ? "Hide Trend Line" : "Show Trend Line");
+      renderTrend(xScale, yScale);
+    });
   };
-}
+
+  // ---------- helpers ----------
+  function fmt1(v) { return Number.isFinite(v) ? d3.format(".1f")(v) : "N/A"; }
+  function fmt3(v) { return Number.isFinite(v) ? d3.format(".3f")(v) : "N/A"; }
+
+  function pearsonR(xs, ys) {
+    const n = Math.min(xs.length, ys.length);
+    if (n < 2) return NaN;
+    const mx = d3.mean(xs), my = d3.mean(ys);
+    let num = 0, dx2 = 0, dy2 = 0;
+    for (let i = 0; i < n; i++) {
+      const dx = xs[i] - mx, dy = ys[i] - my;
+      num += dx * dy;
+      dx2 += dx * dx;
+      dy2 += dy * dy;
+    }
+    return num / Math.sqrt(dx2 * dy2);
+  }
+
+  function linearRegression(x, y) {
+    const n = Math.min(x.length, y.length);
+    const sumX = d3.sum(x), sumY = d3.sum(y);
+    const sumXY = d3.sum(x.map((v, i) => v * y[i]));
+    const sumX2 = d3.sum(x.map((v) => v * v));
+
+    const denom = (n * sumX2 - sumX * sumX) || 1e-9;
+    const slope = (n * sumXY - sumX * sumY) / denom;
+    const intercept = (sumY - slope * sumX) / n;
+
+    return { predict: (xx) => slope * xx + intercept };
+  }
+})();
