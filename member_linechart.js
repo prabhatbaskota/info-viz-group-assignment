@@ -25,9 +25,10 @@ const outerH = height + margin.top + margin.bottom;
 const svgRoot = d3.select(container)
   .append("svg")
   .attr("viewBox", `0 0 ${outerW} ${outerH}`)
+  .attr("preserveAspectRatio", "xMidYMid meet")
   .style("width", "100%")
-  .style("height", "auto")
-  .style("display", "block"); // removes extra whitespace
+  .style("height", "320px")   
+  .style("display", "block");
 
 const svg = svgRoot.append("g")
   .attr("transform", `translate(${margin.left},${margin.top})`);
