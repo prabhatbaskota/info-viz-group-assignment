@@ -150,3 +150,8 @@ body {
   pointer-events: none;
   display: none;
 }
+#line-chart {
+  width: 100%;
+  min-height: 320px;
+}
+
