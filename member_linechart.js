@@ -1,120 +1,226 @@
-// linechart.js - Simplified version with only tooltip, no cross-brushing
+const margin = { top: 80, right: 140, bottom: 70, left: 90 };
+const width = 1000 - margin.left - margin.right;
+const height = 500 - margin.top - margin.bottom;
 
-let lineSvg, lineX, lineY, lineFocus;
+const svg = d3.select("#chart")
+  .append("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
 
-function updateLineChart(data, filterAge = null) {
-    const container = d3.select("#line-chart");
-    if (container.empty()) return;
+const tooltip = d3.select("body")
+  .append("div")
+  .attr("class", "tooltip");
 
-    // Use local naming to prevent conflicts with Heatmap/Bar chart variables
-    const lMargin = { top: 30, right: 30, bottom: 60, left: 70 };
-    const lWidth = 450 - lMargin.left - lMargin.right;
-    const lHeight = 300 - lMargin.top - lMargin.bottom;
+d3.csv("data/youth_smoking_drug_data_10000_rows_expanded.csv").then(data => {
 
-    // 1. Setup Persistent Canvas
-    if (!lineSvg) {
-        const fullSvg = container.append("svg")
-            .attr("width", lWidth + lMargin.left + lMargin.right)
-            .attr("height", lHeight + lMargin.top + lMargin.bottom);
-        
-        lineSvg = fullSvg.append("g")
-            .attr("transform", `translate(${lMargin.left},${lMargin.top})`);
+  data.forEach(d => {
+    d.Year = +d.Year;
+    d.Smoking_Prevalence = +d.Smoking_Prevalence;
+    d.Drug_Experimentation = +d.Drug_Experimentation;
+  });
 
-        lineX = d3.scalePoint().range([0, lWidth]);
-        lineY = d3.scaleLinear().range([lHeight, 0]);
+  function updateChart(gender) {
 
-        lineSvg.append("g").attr("class", "x-axis").attr("transform", `translate(0,${lHeight})`);
-        lineSvg.append("g").attr("class", "y-axis");
+    svg.selectAll("*").remove();
 
-        // Static Labels
-        lineSvg.append("text").attr("class", "axis-label").attr("x", lWidth/2).attr("y", lHeight+45).attr("text-anchor", "middle").text("Year");
-        lineSvg.append("text").attr("class", "axis-label").attr("transform", "rotate(-90)").attr("y", -50).attr("x", -lHeight/2).attr("text-anchor", "middle").text("Avg Smoking %");
+    let filteredData;
+    const genderLabel = gender === "Both" ? "Overall" : gender;
 
-        // The Line Path
-        lineSvg.append("path")
-            .attr("class", "main-line")
-            .attr("fill", "none")
-            .attr("stroke", "steelblue")
-            .attr("stroke-width", 3);
-
-        // --- NEW: Vertical Focus Line (Tracker) ---
-        lineFocus = lineSvg.append("line")
-            .attr("class", "focus-line")
-            .attr("y1", 0)
-            .attr("y2", lHeight)
-            .style("stroke", "#999")
-            .style("stroke-width", 1)
-            .style("stroke-dasharray", "3,3")
-            .style("display", "none");
+    if (gender === "Both") {
+      filteredData = data.filter(d => d.Gender === "Male" || d.Gender === "Female");
+    } else {
+      filteredData = data.filter(d => d.Gender === gender);
     }
 
-    // 2. Prepare Data (Filter by Age if a hover/selection is active)
-    let filteredData = data;
-    if (filterAge) {
-        filteredData = data.filter(d => d.Age_Group === filterAge);
+    const yearlyData = Array.from(
+      d3.rollup(
+        filteredData,
+        v => ({
+          smoking: d3.mean(v, d => d.Smoking_Prevalence),
+          drugs: d3.mean(v, d => d.Drug_Experimentation)
+        }),
+        d => d.Year
+      ),
+      ([Year, v]) => ({
+        Year,
+        Smoking: v.smoking,
+        Drugs: v.drugs
+      })
+    ).sort((a, b) => a.Year - b.Year);
+
+    // X Scale
+    const xScale = d3.scalePoint()
+      .domain(yearlyData.map(d => d.Year))
+      .range([0, width]);
+
+    // Y Scales
+    const yLeft = d3.scaleLinear()
+      .domain([
+        d3.min(yearlyData, d => d.Smoking) - 0.3,
+        d3.max(yearlyData, d => d.Smoking) + 0.3
+      ])
+      .range([height, 0]);
+
+    const yRight = d3.scaleLinear()
+      .domain([
+        d3.min(yearlyData, d => d.Drugs) - 0.5,
+        d3.max(yearlyData, d => d.Drugs) + 0.5
+      ])
+      .range([height, 0]);
+
+    // Axes
+    svg.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(xScale));
+
+    svg.append("g")
+      .call(d3.axisLeft(yLeft).ticks(5).tickFormat(d => d.toFixed(1) + "%"));
+
+    svg.append("g")
+      .attr("transform", `translate(${width},0)`)
+      .call(d3.axisRight(yRight).ticks(5).tickFormat(d => d.toFixed(1) + "%"));
+
+    // Axis Labels 
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", -60)
+      .attr("text-anchor", "middle")
+      .style("fill", "#1f77b4")
+      .style("font-weight", "bold")
+      .text("Smoking Prevalence (%)");
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", width + 120)
+      .attr("text-anchor", "middle")
+      .style("fill", "#ff7f0e")
+      .style("font-weight", "bold")
+      .text("Drug Experimentation (%)");
+
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height + 50)
+      .attr("text-anchor", "middle")
+      .style("font-weight", "bold")
+      .text("Year");
+
+    // TITLE 
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", -30)
+      .attr("text-anchor", "middle")
+      .style("font-size", "22px")
+      .style("font-weight", "bold")
+      .text("Smoking vs Drug Experimentation");
+
+    // Lines
+    const smokingLine = d3.line()
+      .x(d => xScale(d.Year))
+      .y(d => yLeft(d.Smoking));
+
+    const drugLine = d3.line()
+      .x(d => xScale(d.Year))
+      .y(d => yRight(d.Drugs));
+
+    svg.append("path")
+      .datum(yearlyData)
+      .attr("fill", "none")
+      .attr("stroke", "#1f77b4")
+      .attr("stroke-width", 3)
+      .attr("d", smokingLine);
+
+    svg.append("path")
+      .datum(yearlyData)
+      .attr("fill", "none")
+      .attr("stroke", "#ff7f0e")
+      .attr("stroke-width", 3)
+      .attr("d", drugLine);
+
+    // Tooltip helpers
+    function showTooltip(event, d) {
+      tooltip
+        .style("display", "block")
+        .html(
+          `Year: ${d.Year}<br>
+           Gender: ${genderLabel}<br>
+           Smoking: ${d.Smoking.toFixed(2)}%<br>
+           Drug Experimentation: ${d.Drugs.toFixed(2)}%`
+        )
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY + 10) + "px");
     }
 
-    const yearly = Array.from(
-        d3.rollup(filteredData, v => d3.mean(v, d => d.Smoking_Prevalence), d => d.Year),
-        ([Year, val]) => ({Year, val})
-    ).sort((a,b) => a.Year - b.Year);
+    function moveTooltip(event) {
+      tooltip
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY + 10) + "px");
+    }
 
-    // 3. Update Scales (Keep Y-axis steady or zoom)
-    lineX.domain(yearly.map(d => d.Year));
-    // Zooming the Y-axis slightly to show the trend better
-    const minV = d3.min(yearly, d => d.val);
-    const maxV = d3.max(yearly, d => d.val);
-    lineY.domain([minV * 0.95, maxV * 1.05]).nice();
+    function hideTooltip() {
+      tooltip.style("display", "none");
+    }
 
-    // 4. Update Axes
-    lineSvg.select(".x-axis").transition().duration(750)
-        .call(d3.axisBottom(lineX).tickFormat(d3.format("d")));
-    lineSvg.select(".y-axis").transition().duration(750)
-        .call(d3.axisLeft(lineY).ticks(5).tickFormat(d => d.toFixed(1) + "%"));
+    // Smoking points
+    svg.selectAll(".dot-smoking")
+      .data(yearlyData)
+      .enter()
+      .append("circle")
+      .attr("class", "dot-smoking")
+      .attr("cx", d => xScale(d.Year))
+      .attr("cy", d => yLeft(d.Smoking))
+      .attr("r", 5)
+      .attr("fill", "#1f77b4")
+      .on("mouseover", function (event, d) {
+        d3.select(this).transition().duration(150).attr("r", 9);
+        showTooltip(event, d);
+      })
+      .on("mousemove", moveTooltip)
+      .on("mouseout", function () {
+        d3.select(this).transition().duration(150).attr("r", 5);
+        hideTooltip();
+      });
 
-    // 5. Morph the Line
-    const lineGenerator = d3.line()
-        .x(d => lineX(d.Year))
-        .y(d => lineY(d.val))
-        .curve(d3.curveMonotoneX);
+    // Drug points
+    svg.selectAll(".dot-drugs")
+      .data(yearlyData)
+      .enter()
+      .append("circle")
+      .attr("class", "dot-drugs")
+      .attr("cx", d => xScale(d.Year))
+      .attr("cy", d => yRight(d.Drugs))
+      .attr("r", 5)
+      .attr("fill", "#ff7f0e")
+      .on("mouseover", function (event, d) {
+        d3.select(this).transition().duration(150).attr("r", 9);
+        showTooltip(event, d);
+      })
+      .on("mousemove", moveTooltip)
+      .on("mouseout", function () {
+        d3.select(this).transition().duration(150).attr("r", 5);
+        hideTooltip();
+      });
 
-    lineSvg.select(".main-line")
-        .datum(yearly)
-        .transition().duration(1000)
-        .attr("d", lineGenerator)
-        .attr("stroke", filterAge ? "#e74c3c" : "steelblue"); // Change color when highlighting
+    // Legend
+    const legend = svg.append("g")
+      .attr("transform", `translate(${width - 200}, 10)`);
 
-    // 6. Update the Circles (Dots)
-    const circles = lineSvg.selectAll("circle.dot").data(yearly, d => d.Year);
+    legend.append("circle").attr("r", 6).attr("fill", "#1f77b4");
+    legend.append("text").attr("x", 14).attr("y", 4).text("Smoking Prevalence");
 
-    circles.exit().remove();
+    legend.append("circle").attr("cy", 24).attr("r", 6).attr("fill", "#ff7f0e");
+    legend.append("text").attr("x", 14).attr("y", 28).text("Drug Experimentation");
+  }
 
-    const circlesEnter = circles.enter().append("circle")
-        .attr("class", "dot")
-        .attr("r", 0)
-        .attr("fill", filterAge ? "#e74c3c" : "steelblue");
+  // Initial render
+  updateChart("Both");
 
-    circlesEnter.merge(circles)
-        .on("mouseover", function(event, d) {
-            lineFocus.style("display", "block").attr("x1", lineX(d.Year)).attr("x2", lineX(d.Year));
-            d3.select(this).attr("r", 8).attr("fill", "orange");
-            
-            d3.select(".heatmap-tooltip").style("display", "block")
-                .html(`<strong>Year: ${d.Year}</strong><br>
-                       ${filterAge ? "Age " + filterAge : "Total Avg"}: ${d.val.toFixed(2)}%`);
-        })
-        .on("mousemove", (event) => {
-            d3.select(".heatmap-tooltip")
-                .style("left", (event.clientX + 15) + "px")
-                .style("top", (event.clientY - 15) + "px");
-        })
-        .on("mouseout", function() {
-            lineFocus.style("display", "none");
-            d3.select(this).attr("r", 5).attr("fill", filterAge ? "#e74c3c" : "steelblue");
-            d3.select(".heatmap-tooltip").style("display", "none");
-        })
-        .transition().duration(1000)
-        .attr("cx", d => lineX(d.Year))
-        .attr("cy", d => lineY(d.val))
-        .attr("r", 5);
-}
+  // Gender filter
+  d3.select("#genderSelect").on("change", function () {
+    updateChart(this.value);
+  });
+
+});
