@@ -1,42 +1,47 @@
-const margin = { top: 80, right: 140, bottom: 70, left: 90 };
-const width = 1000 - margin.left - margin.right;
-const height = 500 - margin.top - margin.bottom;
+// member_linechart.js
 
-const svg = d3.select("#chart")
-  .append("svg")
-  .attr("width", width + margin.left + margin.right)
-  .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-  .attr("transform", `translate(${margin.left},${margin.top})`);
+(function () {
+  const margin = { top: 80, right: 140, bottom: 70, left: 90 };
+  const width = 1000 - margin.left - margin.right;
+  const height = 500 - margin.top - margin.bottom;
 
-const tooltip = d3.select("body")
-  .append("div")
-  .attr("class", "tooltip");
+  const container = "#line-chart"; // dashboard div id
 
-d3.csv("data/youth_smoking_drug_data_10000_rows_expanded.csv").then(data => {
+  // Create tooltip once (avoid duplicates on multiple updates)
+  const tooltip = d3.select("body")
+    .selectAll(".tooltip")
+    .data([null])
+    .join("div")
+    .attr("class", "tooltip");
 
-  data.forEach(d => {
-    d.Year = +d.Year;
-    d.Smoking_Prevalence = +d.Smoking_Prevalence;
-    d.Drug_Experimentation = +d.Drug_Experimentation;
-  });
+  function render(data) {
+    // Clear old chart completely each update
+    d3.select(container).selectAll("*").remove();
 
-  function updateChart(gender) {
+    // Build svg exactly like your original
+    const svg = d3.select(container)
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    svg.selectAll("*").remove();
+    // Ensure numeric fields (safe even if already converted in main.js)
+    data.forEach(d => {
+      d.Year = +d.Year;
+      d.Smoking_Prevalence = +d.Smoking_Prevalence;
+      d.Drug_Experimentation = +d.Drug_Experimentation;
+    });
 
-    let filteredData;
-    const genderLabel = gender === "Both" ? "Overall" : gender;
-
-    if (gender === "Both") {
-      filteredData = data.filter(d => d.Gender === "Male" || d.Gender === "Female");
-    } else {
-      filteredData = data.filter(d => d.Gender === gender);
-    }
+    // Dashboard already filters gender in main.js using #gender-filter
+    // so here we just use the passed data
+    const genderLabel = d3.select("#gender-filter").empty()
+      ? "Overall"
+      : d3.select("#gender-filter").property("value");
 
     const yearlyData = Array.from(
       d3.rollup(
-        filteredData,
+        data,
         v => ({
           smoking: d3.mean(v, d => d.Smoking_Prevalence),
           drugs: d3.mean(v, d => d.Drug_Experimentation)
@@ -49,6 +54,16 @@ d3.csv("data/youth_smoking_drug_data_10000_rows_expanded.csv").then(data => {
         Drugs: v.drugs
       })
     ).sort((a, b) => a.Year - b.Year);
+
+    if (yearlyData.length === 0) {
+      svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", height / 2)
+        .attr("text-anchor", "middle")
+        .style("font-weight", "bold")
+        .text("No data for this filter");
+      return;
+    }
 
     // X Scale
     const xScale = d3.scalePoint()
@@ -82,7 +97,7 @@ d3.csv("data/youth_smoking_drug_data_10000_rows_expanded.csv").then(data => {
       .attr("transform", `translate(${width},0)`)
       .call(d3.axisRight(yRight).ticks(5).tickFormat(d => d.toFixed(1) + "%"));
 
-    // Axis Labels 
+    // Axis Labels
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
@@ -108,7 +123,7 @@ d3.csv("data/youth_smoking_drug_data_10000_rows_expanded.csv").then(data => {
       .style("font-weight", "bold")
       .text("Year");
 
-    // TITLE 
+    // Title
     svg.append("text")
       .attr("x", width / 2)
       .attr("y", -30)
@@ -215,12 +230,8 @@ d3.csv("data/youth_smoking_drug_data_10000_rows_expanded.csv").then(data => {
     legend.append("text").attr("x", 14).attr("y", 28).text("Drug Experimentation");
   }
 
-  // Initial render
-  updateChart("Both");
-
-  // Gender filter
-  d3.select("#genderSelect").on("change", function () {
-    updateChart(this.value);
-  });
-
-});
+  // This is what main.js calls (DO NOT rename)
+  window.updateLineChart = function (data) {
+    render(data);
+  };
+})();
