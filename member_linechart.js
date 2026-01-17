@@ -19,12 +19,18 @@
     d3.select(container).selectAll("*").remove();
 
     // Build svg exactly like your original
-    const svg = d3.select(container)
-      .append("svg")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+    const outerW = width + margin.left + margin.right;
+const outerH = height + margin.top + margin.bottom;
+
+const svgRoot = d3.select(container)
+  .append("svg")
+  .attr("viewBox", `0 0 ${outerW} ${outerH}`)
+  .style("width", "100%")
+  .style("height", "auto")
+  .style("display", "block"); // removes extra whitespace
+
+const svg = svgRoot.append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
 
     // Ensure numeric fields (safe even if already converted in main.js)
     data.forEach(d => {
