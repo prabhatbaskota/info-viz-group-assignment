@@ -201,3 +201,5 @@ d3.select("#bar-year-filter").on("change", () => {
 
   updateBarChart(currentData, null);
 });
+}
+
