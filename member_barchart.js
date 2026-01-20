@@ -1,10 +1,16 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
+ *
  */
 
 console.log("Member bar chart loaded");
 
 let barSvg, x0, x1, y, color;
+
+//
+const barMargin = { top: 40, right: 30, bottom: 80, left: 70 };
+const barWidth  = 500 - barMargin.left - barMargin.right;
+const barHeight = 400 - barMargin.top - barMargin.bottom;
 
 const AGE_ORDER = [
   "10-14","15-19","20-24","25-29",
@@ -55,15 +61,15 @@ function updateBarChart(data, keys) {
   if (!barSvg) {
 
     const fullSvg = container.append("svg")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom);
+      .attr("width", barWidth + barMargin.left + barMargin.right)
+      .attr("height", barHeight + barMargin.top + barMargin.bottom);
 
     barSvg = fullSvg.append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+      .attr("transform", `translate(${barMargin.left},${barMargin.top})`);
 
-    x0 = d3.scaleBand().range([0, width]).padding(0.2);
+    x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
     x1 = d3.scaleBand().padding(0.1);
-    y  = d3.scaleLinear().range([height, 0]);
+    y  = d3.scaleLinear().range([barHeight, 0]);
 
     color = d3.scaleOrdinal()
       .domain(activeKeys)
@@ -71,7 +77,7 @@ function updateBarChart(data, keys) {
 
     barSvg.append("g")
       .attr("class", "x-axis")
-      .attr("transform", `translate(0, ${height})`);
+      .attr("transform", `translate(0, ${barHeight})`);
 
     barSvg.append("g")
       .attr("class", "y-axis");
@@ -133,7 +139,7 @@ function updateBarChart(data, keys) {
     .attr("x", d => x1(d.key))
     .attr("width", x1.bandwidth())
     .attr("y", y(0))
-    .attr("height", height - y(0))
+    .attr("height", barHeight - y(0))
     .attr("fill", d => color(d.key))
     .merge(bars)
     .on("mouseover", (event, d) => {
@@ -152,7 +158,7 @@ function updateBarChart(data, keys) {
     .transition().duration(600)
     .attr("x", d => x1(d.key))
     .attr("y", d => y(d.value))
-    .attr("height", d => height - y(d.value));
+    .attr("height", d => barHeight - y(d.value));
 }
 
 // ===== ONLY BAR LISTENER =====
