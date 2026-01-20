@@ -38,15 +38,35 @@
         </section>
 
         <section class="chart-card">
-            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 10px;">
-                <h3 style="margin: 0;">Age Group Comparison</h3>
-                <select id="metric-filter" style="font-size: 11px;">
-                    <option value="Smoking_Prevalence,Drug_Experimentation">Smoking vs Drugs</option>
-                    <option value="Smoking_Prevalence,Peer_Influence">Smoking vs Peer</option>
-                </select>
-            </div>
-            <div id="bar-chart"></div>
-        </section>
+    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 10px;">
+        
+        <h3 style="margin: 0;">Age Group Comparison</h3>
+
+        <div style="display: flex; gap: 8px; align-items: center;">
+
+            <!-- YEAR FILTER FOR BAR CHART -->
+            <label style="font-size:11px;">Year:</label>
+            <select id="bar-year-filter" style="font-size: 11px;">
+                <option value="all">All Years (Average)</option>
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+            </select>
+
+            <!-- EXISTING METRIC FILTER -->
+            <select id="metric-filter" style="font-size: 11px;">
+                <option value="Smoking_Prevalence,Drug_Experimentation">Smoking vs Drugs</option>
+                <option value="Smoking_Prevalence,Peer_Influence">Smoking vs Peer</option>
+            </select>
+
+        </div>
+    </div>
+
+    <div id="bar-chart"></div>
+</section>
+
 
         <div class="heatmap-tooltip"></div>
     </main>
