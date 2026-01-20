@@ -1,7 +1,5 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- * 2020 → real values
- * all  → multi-year average
  */
 
 console.log("Member bar chart loaded");
@@ -27,7 +25,7 @@ function updateBarChart(data, keys) {
   const selectedYear =
     d3.select("#bar-year-filter").property("value");
 
-  // ---- PREPARE DATA ----
+  // ===== DATA PREPARATION =====
   let processedData;
 
   if (selectedYear === "all") {
@@ -46,16 +44,14 @@ function updateBarChart(data, keys) {
     }));
 
   } else {
-
     processedData = data.filter(d => +d.Year === +selectedYear);
-
   }
 
   const ageGroups = AGE_ORDER.filter(age =>
     processedData.some(d => d.Age_Group === age)
   );
 
-  // ---- CREATE SVG FIRST TIME ----
+  // ===== SVG INIT ONLY ONCE =====
   if (!barSvg) {
 
     const fullSvg = container.append("svg")
@@ -81,7 +77,7 @@ function updateBarChart(data, keys) {
       .attr("class", "y-axis");
   }
 
-  // ---- SCALES ----
+  // ===== SCALES =====
   x0.domain(ageGroups);
   x1.domain(activeKeys).range([0, x0.bandwidth()]);
 
@@ -91,7 +87,7 @@ function updateBarChart(data, keys) {
 
   y.domain([0, maxY]).nice();
 
-  // ---- AXES ----
+  // ===== AXES =====
   barSvg.select(".x-axis")
     .transition().duration(600)
     .call(d3.axisBottom(x0))
@@ -103,7 +99,7 @@ function updateBarChart(data, keys) {
     .transition().duration(600)
     .call(d3.axisLeft(y));
 
-  // ---- GROUPS ----
+  // ===== GROUPS =====
   const groups = barSvg.selectAll(".age-group")
     .data(ageGroups, d => d);
 
@@ -116,7 +112,7 @@ function updateBarChart(data, keys) {
   const groupsMerged = groupsEnter.merge(groups)
     .attr("transform", d => `translate(${x0(d)},0)`);
 
-  // ---- BARS ----
+  // ===== BARS =====
   const bars = groupsMerged.selectAll("rect")
     .data(age => {
       const row = processedData.find(d => d.Age_Group === age);
@@ -159,7 +155,7 @@ function updateBarChart(data, keys) {
     .attr("height", d => height - y(d.value));
 }
 
-// ---- LISTENER ----
+// ===== ONLY BAR LISTENER =====
 d3.select("#bar-year-filter").on("change", () => {
   const currentData =
     (typeof getFilteredData === "function")
