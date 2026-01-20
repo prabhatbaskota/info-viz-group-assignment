@@ -162,10 +162,11 @@ function updateBarChart(data, keys) {
     .attr("fill", d => color(d.key))
     .merge(bars)
 
-    // ===== FIXED TOOLTIP POSITION =====
+    // ===== CORRECT TOOLTIP =====
     .on("mouseover", function(event, d) {
 
-      const chartBox = container.node().getBoundingClientRect();
+      const [mx, my] = d3.pointer(event, container.node());
+      const box = container.node().getBoundingClientRect();
 
       tooltip
         .style("display", "block")
@@ -174,17 +175,18 @@ function updateBarChart(data, keys) {
           ${d.key.replace("_"," ")}: ${d.value.toFixed(1)}%<br>
           Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
         `)
-        .style("left", (chartBox.left + x0(d.ageGroup) + x1(d.key) + 20) + "px")
-        .style("top",  (chartBox.top + y(d.value) - 10) + "px");
+        .style("left", (box.left + mx + 12) + "px")
+        .style("top",  (box.top  + my  - 20) + "px");
     })
 
-    .on("mousemove", function(event, d) {
+    .on("mousemove", function(event) {
 
-      const chartBox = container.node().getBoundingClientRect();
+      const [mx, my] = d3.pointer(event, container.node());
+      const box = container.node().getBoundingClientRect();
 
       tooltip
-        .style("left", (chartBox.left + x0(d.ageGroup) + x1(d.key) + 20) + "px")
-        .style("top",  (chartBox.top + y(d.value) - 10) + "px");
+        .style("left", (box.left + mx + 12) + "px")
+        .style("top",  (box.top  + my  - 20) + "px");
     })
 
     .on("mouseout", () => {
