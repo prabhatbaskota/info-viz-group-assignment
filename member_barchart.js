@@ -1,6 +1,6 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- * 
+ * + GUARANTEED LEGEND
  */
 
 console.log("Member bar chart loaded");
@@ -23,6 +23,7 @@ function updateBarChart(data, keys) {
   const container = d3.select("#bar-chart");
   if (container.empty()) return;
 
+  // ---- SAFE METRICS ----
   const activeKeys = (keys && keys.length === 2)
     ? keys
     : ["Smoking_Prevalence", "Drug_Experimentation"];
@@ -67,7 +68,6 @@ function updateBarChart(data, keys) {
     x1 = d3.scaleBand().padding(0.1);
     y  = d3.scaleLinear().range([barHeight, 0]);
 
-    // ===== AXES =====
     barSvg.append("g")
       .attr("class", "x-axis")
       .attr("transform", `translate(0, ${barHeight})`);
@@ -75,7 +75,7 @@ function updateBarChart(data, keys) {
     barSvg.append("g")
       .attr("class", "y-axis");
 
-    // Labels
+    // ---- AXIS LABELS ----
     barSvg.append("text")
       .attr("x", barWidth / 2)
       .attr("y", barHeight + 50)
@@ -89,25 +89,28 @@ function updateBarChart(data, keys) {
       .attr("text-anchor", "middle")
       .text("Rate (%)");
 
-    // 🔴 CONTAINER FOR LEGEND
+    // 🔴 CREATE LEGEND CONTAINER ONCE
     barSvg.append("g")
       .attr("class", "bar-legend")
-      .attr("transform", `translate(${barWidth - 120}, 10)`);
+      .attr("transform", `translate(${barWidth - 140}, 0)`);
   }
 
-  // ===== COLOR SCALE (ALWAYS UPDATE) =====
+  // ===== COLOR SCALE =====
   color = d3.scaleOrdinal()
     .domain(activeKeys)
     .range(["#1f77b4", "#ff7f0e"]);
 
-  // ===== UPDATE LEGEND EVERY TIME =====
+  // =========================
+  // 🔥 LEGEND (ALWAYS UPDATE)
+  // =========================
   const legend = barSvg.select(".bar-legend");
 
   const legendData = activeKeys.map(k => ({
     key: k,
-    label: k === "Smoking_Prevalence" ? "Smoking" :
-           k === "Drug_Experimentation" ? "Drugs" :
-           "Peer Influence"
+    label:
+      k === "Smoking_Prevalence" ? "Smoking" :
+      k === "Drug_Experimentation" ? "Drugs" :
+      "Peer Influence"
   }));
 
   const items = legend.selectAll(".legend-item")
@@ -115,23 +118,24 @@ function updateBarChart(data, keys) {
 
   items.exit().remove();
 
-  const enter = items.enter()
+  const itemsEnter = items.enter()
     .append("g")
     .attr("class", "legend-item");
 
-  enter.append("rect")
+  itemsEnter.append("rect")
     .attr("width", 14)
     .attr("height", 14)
     .attr("rx", 3);
 
-  enter.append("text")
+  itemsEnter.append("text")
     .attr("x", 20)
-    .attr("y", 11)
+    .attr("y", 12)
     .style("font-size", "12px");
 
-  const merged = enter.merge(items);
+  const merged = itemsEnter.merge(items);
 
-  merged.attr("transform", (d,i) => `translate(0, ${i*22})`);
+  merged
+    .attr("transform", (d,i) => `translate(0, ${i*22})`);
 
   merged.select("rect")
     .attr("fill", d => color(d.key));
@@ -175,8 +179,7 @@ function updateBarChart(data, keys) {
 
       return activeKeys.map(key => ({
         key,
-        value: row ? +row[key] || 0 : 0,
-        ageGroup: age
+        value: row ? +row[key] || 0 : 0
       }));
     });
 
