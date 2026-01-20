@@ -162,14 +162,28 @@ function updateBarChart(data, keys) {
     .attr("fill", d => color(d.key))
     .merge(bars)
     .on("mouseover", (event, d) => {
-      tooltip
-        .style("display", "block")
-        .html(`
-          <strong>${d.ageGroup}</strong><br>
-          ${d.key.replace("_"," ")}: ${d.value.toFixed(1)}%<br>
-          Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
-        `);
-    })
+
+  const [xPos, yPos] = d3.pointer(event);
+
+  tooltip
+    .style("display", "block")
+    .html(`
+      <strong>${d.ageGroup}</strong><br>
+      ${d.key.replace("_"," ")}: ${d.value.toFixed(1)}%<br>
+      Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
+    `)
+    .style("left", (event.pageX + 12) + "px")
+    .style("top", (event.pageY - 20) + "px");
+})
+.on("mousemove", (event) => {
+  tooltip
+    .style("left", (event.pageX + 12) + "px")
+    .style("top", (event.pageY - 20) + "px");
+})
+.on("mouseout", () => {
+  tooltip.style("display","none");
+})
+
     .on("mouseout", () => {
       tooltip.style("display","none");
     })
