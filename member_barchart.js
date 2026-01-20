@@ -58,30 +58,50 @@ function updateBarChart(data, keys) {
   );
 
   // ===== SVG INIT ONLY ONCE =====
-  if (!barSvg) {
+if (!barSvg) {
 
-    const fullSvg = container.append("svg")
-      .attr("width", barWidth + barMargin.left + barMargin.right)
-      .attr("height", barHeight + barMargin.top + barMargin.bottom);
+  const fullSvg = container.append("svg")
+    .attr("width", barWidth + barMargin.left + barMargin.right)
+    .attr("height", barHeight + barMargin.top + barMargin.bottom);
 
-    barSvg = fullSvg.append("g")
-      .attr("transform", `translate(${barMargin.left},${barMargin.top})`);
+  barSvg = fullSvg.append("g")
+    .attr("transform", `translate(${barMargin.left},${barMargin.top})`);
 
-    x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
-    x1 = d3.scaleBand().padding(0.1);
-    y  = d3.scaleLinear().range([barHeight, 0]);
+  x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
+  x1 = d3.scaleBand().padding(0.1);
+  y  = d3.scaleLinear().range([barHeight, 0]);
 
-    color = d3.scaleOrdinal()
-      .domain(activeKeys)
-      .range(["#1f77b4", "#ff7f0e"]);
+  color = d3.scaleOrdinal()
+    .domain(activeKeys)
+    .range(["#1f77b4", "#ff7f0e"]);
 
-    barSvg.append("g")
-      .attr("class", "x-axis")
-      .attr("transform", `translate(0, ${barHeight})`);
+  // Axes containers
+  barSvg.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0, ${barHeight})`);
 
-    barSvg.append("g")
-      .attr("class", "y-axis");
-  }
+  barSvg.append("g")
+    .attr("class", "y-axis");
+
+  // ===== ADD AXIS LABELS =====
+
+  // X Label
+  barSvg.append("text")
+    .attr("x", barWidth / 2)
+    .attr("y", barHeight + 60)
+    .attr("text-anchor", "middle")
+    .style("font-size", "12px")
+    .text("Age Groups");
+
+  // Y Label
+  barSvg.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -barHeight / 2)
+    .attr("y", -50)
+    .attr("text-anchor", "middle")
+    .style("font-size", "12px")
+    .text("Rate (%)");
+}
 
   // ===== SCALES =====
   x0.domain(ageGroups);
