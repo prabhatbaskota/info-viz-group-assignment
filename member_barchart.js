@@ -1,6 +1,6 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- * + GUARANTEED LEGEND
+ * GUARANTEED LEGEND CREATION
  */
 
 console.log("Member bar chart loaded");
@@ -16,21 +16,65 @@ const AGE_ORDER = [
   "30-39","40-49","50-59","60-69","70-79","80+"
 ];
 
-function updateBarChart(data, keys) {
-
-  if (!data || data.length === 0) return;
+// ===== CREATE SVG IMMEDIATELY =====
+function initBarSVG() {
 
   const container = d3.select("#bar-chart");
   if (container.empty()) return;
 
-  // ---- SAFE METRICS ----
+  const fullSvg = container.append("svg")
+    .attr("width", barWidth + barMargin.left + barMargin.right)
+    .attr("height", barHeight + barMargin.top + barMargin.bottom);
+
+  barSvg = fullSvg.append("g")
+    .attr("transform", `translate(${barMargin.left + 15}, ${barMargin.top - 10})`);
+
+  x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
+  x1 = d3.scaleBand().padding(0.1);
+  y  = d3.scaleLinear().range([barHeight, 0]);
+
+  // Axes
+  barSvg.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0, ${barHeight})`);
+
+  barSvg.append("g")
+    .attr("class", "y-axis");
+
+  // Axis Labels
+  barSvg.append("text")
+    .attr("x", barWidth / 2)
+    .attr("y", barHeight + 50)
+    .attr("text-anchor", "middle")
+    .text("Age Groups");
+
+  barSvg.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -barHeight / 2)
+    .attr("y", -55)
+    .attr("text-anchor", "middle")
+    .text("Rate (%)");
+
+  // 🔴 LEGEND CREATED HERE — ALWAYS
+  barSvg.append("g")
+    .attr("class", "bar-legend")
+    .attr("transform", `translate(${barWidth - 140}, 10)`);
+
+  console.log("SVG and legend container created");
+}
+
+// ===== MAIN UPDATE FUNCTION =====
+function updateBarChart(data, keys) {
+
+  if (!barSvg) initBarSVG();
+  if (!barSvg) return;
+
   const activeKeys = (keys && keys.length === 2)
     ? keys
     : ["Smoking_Prevalence", "Drug_Experimentation"];
 
   const selectedYear = d3.select("#bar-year-filter").property("value");
 
-  // ===== DATA PREPARATION =====
   let processedData;
 
   if (selectedYear === "all") {
@@ -38,8 +82,7 @@ function updateBarChart(data, keys) {
       data,
       v => ({
         Smoking_Prevalence: d3.mean(v, d => +d.Smoking_Prevalence),
-        Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation),
-        Peer_Influence: d3.mean(v, d => +d.Peer_Influence)
+        Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation)
       }),
       d => d.Age_Group
     ).map(([age, values]) => ({
@@ -54,55 +97,14 @@ function updateBarChart(data, keys) {
     processedData.some(d => d.Age_Group === age)
   );
 
-  // ===== SVG INIT =====
-  if (!barSvg) {
-
-    const fullSvg = container.append("svg")
-      .attr("width", barWidth + barMargin.left + barMargin.right)
-      .attr("height", barHeight + barMargin.top + barMargin.bottom);
-
-    barSvg = fullSvg.append("g")
-      .attr("transform", `translate(${barMargin.left + 15}, ${barMargin.top - 10})`);
-
-    x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
-    x1 = d3.scaleBand().padding(0.1);
-    y  = d3.scaleLinear().range([barHeight, 0]);
-
-    barSvg.append("g")
-      .attr("class", "x-axis")
-      .attr("transform", `translate(0, ${barHeight})`);
-
-    barSvg.append("g")
-      .attr("class", "y-axis");
-
-    // ---- AXIS LABELS ----
-    barSvg.append("text")
-      .attr("x", barWidth / 2)
-      .attr("y", barHeight + 50)
-      .attr("text-anchor", "middle")
-      .text("Age Groups");
-
-    barSvg.append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -barHeight / 2)
-      .attr("y", -55)
-      .attr("text-anchor", "middle")
-      .text("Rate (%)");
-
-    // 🔴 CREATE LEGEND CONTAINER ONCE
-    barSvg.append("g")
-      .attr("class", "bar-legend")
-      .attr("transform", `translate(${barWidth - 140}, 0)`);
-  }
-
   // ===== COLOR SCALE =====
   color = d3.scaleOrdinal()
     .domain(activeKeys)
     .range(["#1f77b4", "#ff7f0e"]);
 
-  // =========================
-  // 🔥 LEGEND (ALWAYS UPDATE)
-  // =========================
+  // ==========================
+  // 🔥 LEGEND (NOW GUARANTEED)
+  // ==========================
   const legend = barSvg.select(".bar-legend");
 
   const legendData = activeKeys.map(k => ({
@@ -142,6 +144,8 @@ function updateBarChart(data, keys) {
 
   merged.select("text")
     .text(d => d.label);
+
+  console.log("Legend updated with:", legendData);
 
   // ===== SCALES =====
   x0.domain(ageGroups);
