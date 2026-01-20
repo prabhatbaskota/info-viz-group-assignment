@@ -1,8 +1,6 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- * + Project style tooltip
- * + Tooltip color = bar color
- * + Value label inside bars
+ * 
  */
 
 console.log("Member bar chart loaded");
@@ -17,19 +15,6 @@ const AGE_ORDER = [
   "10-14","15-19","20-24","25-29",
   "30-39","40-49","50-59","60-69","70-79","80+"
 ];
-
-// ===== LOCAL BAR TOOLTIP =====
-const barTooltip = d3.select("body")
-  .append("div")
-  .style("position", "absolute")
-  .style("background", "rgba(30,30,30,0.92)")
-  .style("color", "#fff")
-  .style("padding", "7px 9px")
-  .style("border-radius", "6px")
-  .style("font-size", "12px")
-  .style("pointer-events", "none")
-  .style("box-shadow", "0 3px 8px rgba(0,0,0,0.25)")
-  .style("display", "none");
 
 function updateBarChart(data, keys) {
 
@@ -82,10 +67,7 @@ function updateBarChart(data, keys) {
     x1 = d3.scaleBand().padding(0.1);
     y  = d3.scaleLinear().range([barHeight, 0]);
 
-    color = d3.scaleOrdinal()
-      .domain(["Smoking_Prevalence", "Drug_Experimentation"])
-      .range(["#1f77b4", "#ff7f0e"]);
-
+    // ===== AXES =====
     barSvg.append("g")
       .attr("class", "x-axis")
       .attr("transform", `translate(0, ${barHeight})`);
@@ -93,12 +75,11 @@ function updateBarChart(data, keys) {
     barSvg.append("g")
       .attr("class", "y-axis");
 
-    // ----- Axis Labels -----
+    // Labels
     barSvg.append("text")
       .attr("x", barWidth / 2)
       .attr("y", barHeight + 50)
       .attr("text-anchor", "middle")
-      .style("font-size", "13px")
       .text("Age Groups");
 
     barSvg.append("text")
@@ -106,38 +87,57 @@ function updateBarChart(data, keys) {
       .attr("x", -barHeight / 2)
       .attr("y", -55)
       .attr("text-anchor", "middle")
-      .style("font-size", "13px")
       .text("Rate (%)");
 
-    // ===== LEGEND (INDEPENDENT) =====
-    const legend = barSvg.append("g")
+    // 🔴 CONTAINER FOR LEGEND
+    barSvg.append("g")
       .attr("class", "bar-legend")
-      .attr("transform", `translate(${barWidth - 140}, 0)`);
-
-    const legendData = [
-      { key: "Smoking_Prevalence", label: "Smoking" },
-      { key: "Drug_Experimentation", label: "Drugs" }
-    ];
-
-    const items = legend.selectAll(".legend-item")
-      .data(legendData)
-      .enter()
-      .append("g")
-      .attr("class", "legend-item")
-      .attr("transform", (d,i) => `translate(0, ${i*22})`);
-
-    items.append("rect")
-      .attr("width", 14)
-      .attr("height", 14)
-      .attr("rx", 3)
-      .attr("fill", d => color(d.key));
-
-    items.append("text")
-      .attr("x", 20)
-      .attr("y", 11)
-      .style("font-size", "12px")
-      .text(d => d.label);
+      .attr("transform", `translate(${barWidth - 120}, 10)`);
   }
+
+  // ===== COLOR SCALE (ALWAYS UPDATE) =====
+  color = d3.scaleOrdinal()
+    .domain(activeKeys)
+    .range(["#1f77b4", "#ff7f0e"]);
+
+  // ===== UPDATE LEGEND EVERY TIME =====
+  const legend = barSvg.select(".bar-legend");
+
+  const legendData = activeKeys.map(k => ({
+    key: k,
+    label: k === "Smoking_Prevalence" ? "Smoking" :
+           k === "Drug_Experimentation" ? "Drugs" :
+           "Peer Influence"
+  }));
+
+  const items = legend.selectAll(".legend-item")
+    .data(legendData);
+
+  items.exit().remove();
+
+  const enter = items.enter()
+    .append("g")
+    .attr("class", "legend-item");
+
+  enter.append("rect")
+    .attr("width", 14)
+    .attr("height", 14)
+    .attr("rx", 3);
+
+  enter.append("text")
+    .attr("x", 20)
+    .attr("y", 11)
+    .style("font-size", "12px");
+
+  const merged = enter.merge(items);
+
+  merged.attr("transform", (d,i) => `translate(0, ${i*22})`);
+
+  merged.select("rect")
+    .attr("fill", d => color(d.key));
+
+  merged.select("text")
+    .text(d => d.label);
 
   // ===== SCALES =====
   x0.domain(ageGroups);
@@ -184,41 +184,16 @@ function updateBarChart(data, keys) {
 
   bars.enter()
     .append("rect")
+    .merge(bars)
     .attr("x", d => x1(d.key))
     .attr("width", x1.bandwidth())
     .attr("fill", d => color(d.key))
-    .merge(bars)
-
-    .on("mouseover", function(event, d) {
-      barTooltip
-        .style("display", "block")
-        .style("border-left", `4px solid ${color(d.key)}`)
-        .html(`
-          <strong>${d.ageGroup}</strong><br>
-          ${d.key.replace("_"," ")}: 
-          <span style="color:${color(d.key)};font-weight:bold">
-            ${d.value.toFixed(1)}%
-          </span><br>
-          Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
-        `);
-    })
-
-    .on("mousemove", function(event) {
-      barTooltip
-        .style("left", (event.pageX + 12) + "px")
-        .style("top", (event.pageY - 20) + "px");
-    })
-
-    .on("mouseout", function() {
-      barTooltip.style("display","none");
-    })
-
     .transition().duration(600)
     .attr("y", d => y(d.value))
     .attr("height", d => barHeight - y(d.value));
 }
 
-// ===== ONLY BAR LISTENER =====
+// ===== LISTENER =====
 d3.select("#bar-year-filter").on("change", () => {
   const currentData =
     (typeof getFilteredData === "function")
