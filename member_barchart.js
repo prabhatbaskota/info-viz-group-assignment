@@ -1,6 +1,8 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- * FIXED TOOLTIP POSITION – BAR LOCAL TOOLTIP
+ * + Project style tooltip
+ * + Tooltip color = bar color
+ * + Value label inside bars
  */
 
 console.log("Member bar chart loaded");
@@ -16,17 +18,18 @@ const AGE_ORDER = [
   "30-39","40-49","50-59","60-69","70-79","80+"
 ];
 
-// ===== CREATE LOCAL TOOLTIP FOR BAR CHART =====
+// ===== LOCAL BAR TOOLTIP (PROJECT STYLE) =====
 const barTooltip = d3.select("body")
   .append("div")
   .style("position", "absolute")
-  .style("background", "#fff")
-  .style("border", "1px solid #ccc")
-  .style("padding", "6px 8px")
-  .style("border-radius", "4px")
+  .style("background", "rgba(30,30,30,0.92)")
+  .style("color", "#fff")
+  .style("padding", "7px 9px")
+  .style("border-radius", "6px")
   .style("font-size", "12px")
   .style("pointer-events", "none")
-  .style("box-shadow", "0 2px 6px rgba(0,0,0,0.2)")
+  .style("box-shadow", "0 3px 8px rgba(0,0,0,0.25)")
+  .style("border-left", "4px solid #1f77b4")
   .style("display", "none");
 
 function updateBarChart(data, keys) {
@@ -66,7 +69,7 @@ function updateBarChart(data, keys) {
     processedData.some(d => d.Age_Group === age)
   );
 
-  // ===== SVG INIT ONLY ONCE =====
+  // ===== SVG INIT =====
   if (!barSvg) {
 
     const fullSvg = container.append("svg")
@@ -153,6 +156,30 @@ function updateBarChart(data, keys) {
 
   bars.exit().remove();
 
+  // ===== VALUE TEXT INSIDE BARS =====
+  const texts = groupsMerged.selectAll(".bar-value")
+    .data(d => {
+      const row = processedData.find(r => r.Age_Group === d);
+      return activeKeys.map(key => ({
+        key,
+        value: row ? +row[key] || 0 : 0
+      }));
+    });
+
+  texts.exit().remove();
+
+  texts.enter()
+    .append("text")
+    .attr("class", "bar-value")
+    .merge(texts)
+    .attr("x", d => x1(d.key) + x1.bandwidth()/2)
+    .attr("y", d => y(d.value) + 14)
+    .attr("text-anchor", "middle")
+    .style("fill", "#fff")
+    .style("font-size", "11px")
+    .style("font-weight", "bold")
+    .text(d => d.value.toFixed(1));
+
   bars.enter()
     .append("rect")
     .attr("x", d => x1(d.key))
@@ -162,14 +189,18 @@ function updateBarChart(data, keys) {
     .attr("fill", d => color(d.key))
     .merge(bars)
 
-    // ===== PERFECT TOOLTIP =====
+    // ===== SMART TOOLTIP =====
     .on("mouseover", function(event, d) {
 
       barTooltip
         .style("display", "block")
+        .style("border-left", `4px solid ${color(d.key)}`)
         .html(`
           <strong>${d.ageGroup}</strong><br>
-          ${d.key.replace("_"," ")}: ${d.value.toFixed(1)}%<br>
+          ${d.key.replace("_"," ")}: 
+          <span style="color:${color(d.key)};font-weight:bold">
+            ${d.value.toFixed(1)}%
+          </span><br>
           Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
         `);
     })
