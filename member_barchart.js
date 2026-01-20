@@ -3,6 +3,7 @@
  * + Project style tooltip
  * + Tooltip color = bar color
  * + Value label inside bars
+ * + FIXED AXIS BUG ✅
  */
 
 console.log("Member bar chart loaded");
@@ -18,7 +19,7 @@ const AGE_ORDER = [
   "30-39","40-49","50-59","60-69","70-79","80+"
 ];
 
-// ===== LOCAL BAR TOOLTIP (PROJECT STYLE) =====
+// ===== TOOLTIP =====
 const barTooltip = d3.select("body")
   .append("div")
   .style("position", "absolute")
@@ -28,22 +29,66 @@ const barTooltip = d3.select("body")
   .style("border-radius", "6px")
   .style("font-size", "12px")
   .style("pointer-events", "none")
-  .style("box-shadow", "0 3px 8px rgba(0,0,0,0.25)")
-  .style("border-left", "4px solid #1f77b4")
   .style("display", "none");
+
+function initBarChart() {
+
+  const container = d3.select("#bar-chart");
+
+  const fullSvg = container.append("svg")
+    .attr("width", barWidth + barMargin.left + barMargin.right)
+    .attr("height", barHeight + barMargin.top + barMargin.bottom);
+
+  barSvg = fullSvg.append("g")
+    .attr("transform",
+      `translate(${barMargin.left + 15}, ${barMargin.top - 10})`
+    );
+
+  x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
+  x1 = d3.scaleBand().padding(0.1);
+  y  = d3.scaleLinear().range([barHeight, 0]);
+
+  // محور‌ها
+  barSvg.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0, ${barHeight})`);
+
+  barSvg.append("g")
+    .attr("class", "y-axis");
+
+  // لیبل‌ها
+  barSvg.append("text")
+    .attr("x", barWidth / 2)
+    .attr("y", barHeight + 50)
+    .attr("text-anchor", "middle")
+    .style("font-size", "13px")
+    .text("Age Groups");
+
+  barSvg.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -barHeight / 2)
+    .attr("y", -55)
+    .attr("text-anchor", "middle")
+    .style("font-size", "13px")
+    .text("Rate (%)");
+}
 
 function updateBarChart(data, keys) {
 
   if (!data || data.length === 0) return;
 
-  const container = d3.select("#bar-chart");
-  if (container.empty()) return;
+  if (!barSvg) initBarChart();
 
   const activeKeys = (keys && keys.length === 2)
     ? keys
     : ["Smoking_Prevalence", "Drug_Experimentation"];
 
-  const selectedYear = d3.select("#bar-year-filter").property("value");
+  color = d3.scaleOrdinal()
+    .domain(activeKeys)
+    .range(["#1f77b4", "#ff7f0e"]);
+
+  const selectedYear =
+    d3.select("#bar-year-filter").property("value");
 
   // ===== DATA PREPARATION =====
   let processedData;
@@ -53,8 +98,7 @@ function updateBarChart(data, keys) {
       data,
       v => ({
         Smoking_Prevalence: d3.mean(v, d => +d.Smoking_Prevalence),
-        Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation),
-        Peer_Influence: d3.mean(v, d => +d.Peer_Influence)
+        Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation)
       }),
       d => d.Age_Group
     ).map(([age, values]) => ({
@@ -69,49 +113,7 @@ function updateBarChart(data, keys) {
     processedData.some(d => d.Age_Group === age)
   );
 
-  // ===== SVG INIT =====
-  if (!barSvg) {
-
-    const fullSvg = container.append("svg")
-      .attr("width", barWidth + barMargin.left + barMargin.right)
-      .attr("height", barHeight + barMargin.top + barMargin.bottom);
-
-    barSvg = fullSvg.append("g")
-      .attr("transform", `translate(${barMargin.left + 15}, ${barMargin.top - 10})`);
-
-    x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
-    x1 = d3.scaleBand().padding(0.1);
-    y  = d3.scaleLinear().range([barHeight, 0]);
-
-    color = d3.scaleOrdinal()
-      .domain(activeKeys)
-      .range(["#1f77b4", "#ff7f0e"]);
-
-    barSvg.append("g")
-      .attr("class", "x-axis")
-      .attr("transform", `translate(0, ${barHeight})`);
-
-    barSvg.append("g")
-      .attr("class", "y-axis");
-
-    // Labels
-    barSvg.append("text")
-      .attr("x", barWidth / 2)
-      .attr("y", barHeight + 50)
-      .attr("text-anchor", "middle")
-      .style("font-size", "13px")
-      .text("Age Groups");
-
-    barSvg.append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -barHeight / 2)
-      .attr("y", -55)
-      .attr("text-anchor", "middle")
-      .style("font-size", "13px")
-      .text("Rate (%)");
-  }
-
-  // ===== SCALES =====
+  // ===== UPDATE SCALES =====
   x0.domain(ageGroups);
   x1.domain(activeKeys).range([0, x0.bandwidth()]);
 
@@ -121,7 +123,7 @@ function updateBarChart(data, keys) {
 
   y.domain([0, maxY]).nice();
 
-  // ===== AXES =====
+  // ===== FIX اصلی اینجاست =====
   barSvg.select(".x-axis")
     .transition().duration(600)
     .call(d3.axisBottom(x0));
@@ -136,11 +138,10 @@ function updateBarChart(data, keys) {
 
   groups.exit().remove();
 
-  const groupsEnter = groups.enter()
+  const groupsMerged = groups.enter()
     .append("g")
-    .attr("class", "age-group");
-
-  const groupsMerged = groupsEnter.merge(groups)
+    .attr("class", "age-group")
+    .merge(groups)
     .attr("transform", d => `translate(${x0(d)},0)`);
 
   const bars = groupsMerged.selectAll("rect")
@@ -177,50 +178,40 @@ function updateBarChart(data, keys) {
     .attr("text-anchor", "middle")
     .style("fill", "#fff")
     .style("font-size", "11px")
-    .style("font-weight", "bold")
     .text(d => d.value.toFixed(1));
 
   bars.enter()
     .append("rect")
+    .merge(bars)
     .attr("x", d => x1(d.key))
     .attr("width", x1.bandwidth())
-    .attr("y", y(0))
-    .attr("height", barHeight - y(0))
     .attr("fill", d => color(d.key))
-    .merge(bars)
-
-    // ===== SMART TOOLTIP =====
     .on("mouseover", function(event, d) {
 
       barTooltip
         .style("display", "block")
-        .style("border-left", `4px solid ${color(d.key)}`)
         .html(`
           <strong>${d.ageGroup}</strong><br>
           ${d.key.replace("_"," ")}: 
-          <span style="color:${color(d.key)};font-weight:bold">
+          <span style="color:${color(d.key)}">
             ${d.value.toFixed(1)}%
-          </span><br>
-          Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
+          </span>
         `);
     })
-
-    .on("mousemove", function(event) {
+    .on("mousemove", (event) => {
       barTooltip
         .style("left", (event.pageX + 12) + "px")
         .style("top", (event.pageY - 20) + "px");
     })
-
-    .on("mouseout", function() {
+    .on("mouseout", () => {
       barTooltip.style("display","none");
     })
-
     .transition().duration(600)
     .attr("y", d => y(d.value))
     .attr("height", d => barHeight - y(d.value));
 }
 
-// ===== ONLY BAR LISTENER =====
+// ===== LISTENER =====
 d3.select("#bar-year-filter").on("change", () => {
   const currentData =
     (typeof getFilteredData === "function")
