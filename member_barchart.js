@@ -36,7 +36,6 @@ function updateBarChart(data, keys) {
   let processedData;
 
   if (selectedYear === "all") {
-
     processedData = d3.rollups(
       data,
       v => ({
@@ -49,7 +48,6 @@ function updateBarChart(data, keys) {
       Age_Group: age,
       ...values
     }));
-
   } else {
     processedData = data.filter(d => +d.Year === +selectedYear);
   }
@@ -65,7 +63,6 @@ function updateBarChart(data, keys) {
       .attr("width", barWidth + barMargin.left + barMargin.right)
       .attr("height", barHeight + barMargin.top + barMargin.bottom);
 
-    // 🔹 جابه‌جایی خیلی کم برای دیده شدن لیبل‌ها
     barSvg = fullSvg.append("g")
       .attr(
         "transform",
@@ -80,7 +77,6 @@ function updateBarChart(data, keys) {
       .domain(activeKeys)
       .range(["#1f77b4", "#ff7f0e"]);
 
-    // Axes containers
     barSvg.append("g")
       .attr("class", "x-axis")
       .attr("transform", `translate(0, ${barHeight})`);
@@ -88,11 +84,8 @@ function updateBarChart(data, keys) {
     barSvg.append("g")
       .attr("class", "y-axis");
 
-    // ===== AXIS LABELS =====
-
-    // X Label
+    // ----- Axis Labels -----
     barSvg.append("text")
-      .attr("class", "axis-label")
       .attr("x", barWidth / 2)
       .attr("y", barHeight + 50)
       .attr("fill", "#333")
@@ -101,9 +94,7 @@ function updateBarChart(data, keys) {
       .style("font-weight", "600")
       .text("Age Groups");
 
-    // Y Label
     barSvg.append("text")
-      .attr("class", "axis-label")
       .attr("transform", "rotate(-90)")
       .attr("x", -barHeight / 2)
       .attr("y", -55)
@@ -174,7 +165,6 @@ function updateBarChart(data, keys) {
     .attr("fill", d => color(d.key))
     .merge(bars)
     .on("mouseover", (event, d) => {
-
       tooltip
         .style("display", "block")
         .html(`
@@ -201,5 +191,3 @@ d3.select("#bar-year-filter").on("change", () => {
 
   updateBarChart(currentData, null);
 });
-}
-
