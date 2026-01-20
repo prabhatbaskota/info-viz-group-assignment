@@ -30,34 +30,30 @@ function updateBarChart(data, keys) {
     ? keys
     : ["Smoking_Prevalence", "Drug_Experimentation"];
 
-  // ===== GET YEAR SELECTION =====
   const selectedYear = d3.select("#bar-year-filter").property("value");
 
-  // ===== PREPARE DATA =====
+  // ===== PREPARE DATA CORRECTLY =====
   let processedData;
 
-  if (selectedYear === "all") {
+  // اول فیلتر سال
+  const baseData =
+    selectedYear === "all"
+      ? data
+      : data.filter(d => +d.Year === +selectedYear);
 
-    // ---- MULTI YEAR AVERAGE ----
-    processedData = d3.rollups(
-      data,
-      v => ({
-        Smoking_Prevalence: d3.mean(v, d => +d.Smoking_Prevalence),
-        Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation),
-        Peer_Influence: d3.mean(v, d => +d.Peer_Influence)
-      }),
-      d => d.Age_Group
-    ).map(([age, values]) => ({
-      Age_Group: age,
-      ...values
-    }));
-
-  } else {
-
-    // ---- REAL VALUES OF SELECTED YEAR ----
-    processedData = data
-      .filter(d => +d.Year === +selectedYear);
-  }
+  // بعد همیشه تجمیع بر اساس Age_Group
+  processedData = d3.rollups(
+    baseData,
+    v => ({
+      Smoking_Prevalence: d3.mean(v, d => +d.Smoking_Prevalence),
+      Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation),
+      Peer_Influence: d3.mean(v, d => +d.Peer_Influence)
+    }),
+    d => d.Age_Group
+  ).map(([age, values]) => ({
+    Age_Group: age,
+    ...values
+  }));
 
   const ageGroups = AGE_ORDER.filter(age =>
     processedData.some(d => d.Age_Group === age)
