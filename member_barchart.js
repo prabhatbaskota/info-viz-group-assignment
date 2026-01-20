@@ -64,10 +64,7 @@ function updateBarChart(data, keys) {
       .attr("height", barHeight + barMargin.top + barMargin.bottom);
 
     barSvg = fullSvg.append("g")
-      .attr(
-        "transform",
-        `translate(${barMargin.left + 15}, ${barMargin.top - 10})`
-      );
+      .attr("transform", `translate(${barMargin.left + 15}, ${barMargin.top - 10})`);
 
     x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
     x1 = d3.scaleBand().padding(0.1);
