@@ -10,9 +10,9 @@ console.log("Member bar chart loaded");
 
 let barSvg, x0, x1, y, color;
 
-const margin = { top: 40, right: 30, bottom: 80, left: 70 };
-const width = 500 - margin.left - margin.right;
-const height = 400 - margin.top - margin.bottom;
+margin = { top: 40, right: 30, bottom: 80, left: 70 };
+width = 500 - margin.left - margin.right;
+height = 400 - margin.top - margin.bottom;
 
 const AGE_ORDER = [
   "10-14","15-19","20-24","25-29",
@@ -30,36 +30,36 @@ function updateBarChart(data, keys) {
     ? keys
     : ["Smoking_Prevalence", "Drug_Experimentation"];
 
-  const selectedYear = d3.select("#bar-year-filter").property("value");
+  const selectedYear =
+    d3.select("#bar-year-filter").property("value");
 
-  // ===== PREPARE DATA CORRECTLY =====
   let processedData;
 
-  // اول فیلتر سال
-  const baseData =
-    selectedYear === "all"
-      ? data
-      : data.filter(d => +d.Year === +selectedYear);
+  if (selectedYear === "all") {
 
-  // بعد همیشه تجمیع بر اساس Age_Group
-  processedData = d3.rollups(
-    baseData,
-    v => ({
-      Smoking_Prevalence: d3.mean(v, d => +d.Smoking_Prevalence),
-      Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation),
-      Peer_Influence: d3.mean(v, d => +d.Peer_Influence)
-    }),
-    d => d.Age_Group
-  ).map(([age, values]) => ({
-    Age_Group: age,
-    ...values
-  }));
+    processedData = d3.rollups(
+      data,
+      v => ({
+        Smoking_Prevalence: d3.mean(v, d => +d.Smoking_Prevalence),
+        Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation),
+        Peer_Influence: d3.mean(v, d => +d.Peer_Influence)
+      }),
+      d => d.Age_Group
+    ).map(([age, values]) => ({
+      Age_Group: age,
+      ...values
+    }));
+
+  } else {
+
+    processedData = data.filter(d => +d.Year === +selectedYear);
+
+  }
 
   const ageGroups = AGE_ORDER.filter(age =>
     processedData.some(d => d.Age_Group === age)
   );
 
-  // ===== CREATE SVG ON FIRST RUN =====
   if (!barSvg) {
 
     const fullSvg = container.append("svg")
@@ -84,15 +84,8 @@ function updateBarChart(data, keys) {
     barSvg.append("g")
       .attr("class", "y-axis");
 
-    barSvg.append("text")
-      .attr("x", -height / 2)
-      .attr("y", -50)
-      .attr("transform", "rotate(-90)")
-      .attr("text-anchor", "middle")
-      .text("Rate (%)");
   }
 
-  // ===== SCALES =====
   x0.domain(ageGroups);
   x1.domain(activeKeys).range([0, x0.bandwidth()]);
 
@@ -102,7 +95,6 @@ function updateBarChart(data, keys) {
 
   y.domain([0, maxY]).nice();
 
-  // ===== AXES =====
   barSvg.select(".x-axis")
     .transition().duration(600)
     .call(d3.axisBottom(x0))
@@ -114,7 +106,6 @@ function updateBarChart(data, keys) {
     .transition().duration(600)
     .call(d3.axisLeft(y));
 
-  // ===== GROUPS =====
   const groups = barSvg.selectAll(".age-group")
     .data(ageGroups, d => d);
 
@@ -127,7 +118,6 @@ function updateBarChart(data, keys) {
   const groupsMerged = groupsEnter.merge(groups)
     .attr("transform", d => `translate(${x0(d)},0)`);
 
-  // ===== BARS =====
   const bars = groupsMerged.selectAll("rect")
     .data(age => {
       const row = processedData.find(d => d.Age_Group === age);
@@ -161,11 +151,6 @@ function updateBarChart(data, keys) {
           Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
         `);
     })
-    .on("mousemove", event => {
-      tooltip
-        .style("left", event.pageX + 10 + "px")
-        .style("top", event.pageY - 20 + "px");
-    })
     .on("mouseout", () => {
       tooltip.style("display","none");
     })
@@ -176,7 +161,6 @@ function updateBarChart(data, keys) {
     .attr("height", d => height - y(d.value));
 }
 
-// ===== LISTENER ONLY FOR BAR CHART =====
 d3.select("#bar-year-filter").on("change", () => {
   const currentData =
     (typeof getFilteredData === "function")
