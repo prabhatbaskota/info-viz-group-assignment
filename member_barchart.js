@@ -1,9 +1,10 @@
 /**
  * Member 2 — Grouped Bar Chart
- * - Works with Gender filter
- * - Works with Year filter
- * - Aggregates correctly per Age_Group
- * - Keeps tooltips + cross-brushing
+ * - Year filter ONLY for bar chart
+ * - Real single-year values (no wrong averaging)
+ * - All-years option = average 2020–2024
+ * - Compatible with gender & metric filters
+ * - Cross-brushing + tooltip
  */
 
 console.log("Member bar chart loaded");
@@ -17,12 +18,12 @@ function updateBarChart(data, keys) {
   const container = d3.select("#bar-chart");
   if (container.empty()) return;
 
-  // ----- Dimensions -----
+  // ---------- Dimensions ----------
   const margin = { top: 60, right: 30, bottom: 70, left: 70 };
   const width = 450 - margin.left - margin.right;
   const height = 350 - margin.top - margin.bottom;
 
-  // ----- Create SVG once -----
+  // ---------- Create SVG once ----------
   if (!barSvg) {
     const fullSvg = container.append("svg")
       .attr("width", width + margin.left + margin.right)
@@ -58,64 +59,67 @@ function updateBarChart(data, keys) {
       .text("Rate (%)");
   }
 
-  // ----- Active metrics -----
+  // ---------- Active metrics ----------
   const activeKeys = (keys && keys.length === 2)
     ? keys
     : ["Smoking_Prevalence", "Drug_Experimentation"];
 
-  // ====================================================
-  // 1) DATA ALREADY COMES FILTERED BY GENDER FROM MAIN
-  // ====================================================
-
-  // ----- Year filter -----
+  // =====================================================
+  // 1) YEAR FILTER — ONLY FOR BAR CHART
+  // =====================================================
   const selectedYear = d3.select("#bar-year-filter").property("value");
 
-  const afterYearFilter =
-    (selectedYear === "all")
-      ? data
-      : data.filter(d => +d.Year === +selectedYear);
+  let dataForChart;
 
-  // ====================================================
-  // 2) AGGREGATE PER AGE GROUP
-  // ====================================================
-  const aggregated = d3.rollups(
-    afterYearFilter,
+  if (selectedYear === "all") {
 
-    v => {
-      const obj = { Age_Group: v[0].Age_Group };
+    // ----- Average 2020–2024 -----
+    dataForChart = d3.rollups(
+      data,
+      v => ({
+        Smoking_Prevalence: d3.mean(v, d => +d.Smoking_Prevalence),
+        Drug_Experimentation: d3.mean(v, d => +d.Drug_Experimentation)
+      }),
+      d => d.Age_Group
+    ).map(([age, obj]) => ({
+      Age_Group: age,
+      ...obj
+    }));
 
-      activeKeys.forEach(k => {
-        obj[k] = d3.mean(v, d => +d[k]) || 0;
-      });
+  } else {
 
-      return obj;
-    },
+    // ----- REAL VALUES OF SELECTED YEAR -----
+    dataForChart = data
+      .filter(d => String(d.Year) === String(selectedYear))
+      .map(d => ({
+        Age_Group: d.Age_Group,
+        Smoking_Prevalence: +d.Smoking_Prevalence,
+        Drug_Experimentation: +d.Drug_Experimentation
+      }));
+  }
 
-    d => d.Age_Group
-  ).map(([age, obj]) => ({ Age_Group: age, ...obj }));
-
-  // ----- Age order -----
+  // ---------- Age order ----------
   const AGE_ORDER = [
     "10-14","15-19","20-24","25-29",
     "30-39","40-49","50-59","60-69","70-79","80+"
   ];
 
   const ageGroups = AGE_ORDER.filter(age =>
-    aggregated.some(d => d.Age_Group === age)
+    dataForChart.some(d => d.Age_Group === age)
   );
 
-  // ----- Scales -----
+  // ---------- Scales ----------
   barX0.domain(ageGroups);
   barX1.domain(activeKeys).range([0, barX0.bandwidth()]);
   barColor.domain(activeKeys);
 
-  const maxY = d3.max(aggregated, d =>
+  const maxY = d3.max(dataForChart, d =>
     d3.max(activeKeys, k => +d[k] || 0)
   ) || 10;
 
   barY.domain([0, maxY]).nice();
 
-  // ----- Axes -----
+  // ---------- Axes ----------
   barSvg.select(".x-axis")
     .transition().duration(600)
     .call(d3.axisBottom(barX0))
@@ -127,7 +131,7 @@ function updateBarChart(data, keys) {
     .transition().duration(600)
     .call(d3.axisLeft(barY).ticks(5).tickFormat(d => d + "%"));
 
-  // ----- Groups -----
+  // ---------- Groups ----------
   const groupSel = barSvg.selectAll(".age-group")
     .data(ageGroups, d => d);
 
@@ -141,11 +145,11 @@ function updateBarChart(data, keys) {
     .transition().duration(600)
     .attr("transform", d => `translate(${barX0(d)},0)`);
 
-  // ----- Bars -----
+  // ---------- Bars ----------
   const rectSel = barSvg.selectAll(".age-group")
     .selectAll("rect")
     .data(age => {
-      const row = aggregated.find(d => d.Age_Group === age);
+      const row = dataForChart.find(d => d.Age_Group === age);
 
       return activeKeys.map(k => ({
         key: k,
@@ -208,7 +212,7 @@ function updateBarChart(data, keys) {
     .attr("fill", d => barColor(d.key));
 }
 
-// ----- LISTENER FOR YEAR DROPDOWN -----
+// ---------- Listener فقط برای بارچارت ----------
 d3.select("#bar-year-filter").on("change", () => {
 
   const currentData =
