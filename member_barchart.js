@@ -1,6 +1,7 @@
 /**
  * Member 2 — Grouped Bar Chart
  * - Year filter (All Years or Single Year)
+ * - Works with dashboard gender filter
  * - Cross-brushing with heatmaps
  * - Metric filter support
  */
@@ -10,6 +11,9 @@ console.log("Member bar chart loaded");
 let barSvg, barX0, barX1, barY, barColor;
 
 function updateBarChart(data, keys) {
+
+    // ---- SAFETY ----
+    if (!data || data.length === 0) return;
 
     const container = d3.select("#bar-chart");
     if (container.empty()) return;
@@ -55,7 +59,7 @@ function updateBarChart(data, keys) {
     }
 
     // =====================================================
-    // 1) YEAR FILTER LOGIC
+    // 1) YEAR FILTER LOGIC  ←←← FIXED PART
     // =====================================================
 
     const selectedYear = d3.select("#bar-year-filter").property("value");
@@ -170,7 +174,7 @@ function updateBarChart(data, keys) {
 
     bars.enter().append("rect")
         .attr("class", "bar")
-        .attr("data-age", d => d.ageGroup)   // 🔗 cross-brushing
+        .attr("data-age", d => d.ageGroup)
         .attr("x", d => barX1(d.key))
         .attr("y", height)
         .attr("width", barX1.bandwidth())
@@ -178,7 +182,6 @@ function updateBarChart(data, keys) {
         .attr("fill", d => barColor(d.key))
         .merge(bars)
 
-        // ---- INTERACTION ----
         .on("mouseover", function(event, d) {
 
             if (window.highlightData)
@@ -207,7 +210,6 @@ function updateBarChart(data, keys) {
                 .style("top", (event.clientY - 15) + "px");
         })
 
-        // ---- ANIMATION ----
         .transition().duration(750)
         .attr("x", d => barX1(d.key))
         .attr("y", d => barY(d.value))
@@ -217,9 +219,14 @@ function updateBarChart(data, keys) {
 }
 
 // =====================================================
-// 6) LISTENER FOR YEAR FILTER
+// 6) YEAR FILTER LISTENER  ←←← FIXED
 // =====================================================
 
 d3.select("#bar-year-filter").on("change", () => {
-    updateBarChart(window.globalData || [], null);
+
+    const currentData = typeof getFilteredData === "function"
+        ? getFilteredData()
+        : [];
+
+    updateBarChart(currentData, null);
 });
