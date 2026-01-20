@@ -29,8 +29,7 @@ function updateBarChart(data, keys) {
     ? keys
     : ["Smoking_Prevalence", "Drug_Experimentation"];
 
-  const selectedYear =
-    d3.select("#bar-year-filter").property("value");
+  const selectedYear = d3.select("#bar-year-filter").property("value");
 
   // ===== DATA PREPARATION =====
   let processedData;
@@ -153,6 +152,26 @@ function updateBarChart(data, keys) {
 
   const tooltip = d3.select(".heatmap-tooltip");
 
+  // helper: keep tooltip inside screen
+  function positionTooltip(event) {
+    const pad = 12;
+
+    let left = event.clientX + pad;
+    let top  = event.clientY - 20;
+
+    const node = tooltip.node();
+    if (!node) return;
+
+    const tt = node.getBoundingClientRect();
+
+    // prevent overflow right/bottom
+    if (left + tt.width > window.innerWidth) left = event.clientX - tt.width - pad;
+    if (top + tt.height > window.innerHeight) top = window.innerHeight - tt.height - pad;
+    if (top < pad) top = pad;
+
+    tooltip.style("left", left + "px").style("top", top + "px");
+  }
+
   bars.enter()
     .append("rect")
     .attr("x", d => x1(d.key))
@@ -162,34 +181,22 @@ function updateBarChart(data, keys) {
     .attr("fill", d => color(d.key))
     .merge(bars)
 
-    // ===== CORRECT TOOLTIP =====
+    // ✅ FIXED TOOLTIP: use clientX/clientY (works with position: fixed)
     .on("mouseover", function(event, d) {
-
-      const [mx, my] = d3.pointer(event, container.node());
-      const box = container.node().getBoundingClientRect();
-
       tooltip
         .style("display", "block")
         .html(`
           <strong>${d.ageGroup}</strong><br>
           ${d.key.replace("_"," ")}: ${d.value.toFixed(1)}%<br>
           Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
-        `)
-        .style("left", (box.left + mx + 12) + "px")
-        .style("top",  (box.top  + my  - 20) + "px");
-    })
+        `);
 
+      positionTooltip(event);
+    })
     .on("mousemove", function(event) {
-
-      const [mx, my] = d3.pointer(event, container.node());
-      const box = container.node().getBoundingClientRect();
-
-      tooltip
-        .style("left", (box.left + mx + 12) + "px")
-        .style("top",  (box.top  + my  - 20) + "px");
+      positionTooltip(event);
     })
-
-    .on("mouseout", () => {
+    .on("mouseout", function() {
       tooltip.style("display","none");
     })
 
