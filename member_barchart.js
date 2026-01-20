@@ -1,13 +1,14 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- *
+ * 2020 → real values
+ * ...
+ * all  → multi-year average
  */
 
 console.log("Member bar chart loaded");
 
 let barSvg, x0, x1, y, color;
 
-//
 const barMargin = { top: 40, right: 30, bottom: 80, left: 70 };
 const barWidth  = 500 - barMargin.left - barMargin.right;
 const barHeight = 400 - barMargin.top - barMargin.bottom;
@@ -58,56 +59,60 @@ function updateBarChart(data, keys) {
   );
 
   // ===== SVG INIT ONLY ONCE =====
-if (!barSvg) {
+  if (!barSvg) {
 
-  const fullSvg = container.append("svg")
-    .attr("width", barWidth + barMargin.left + barMargin.right)
-    .attr("height", barHeight + barMargin.top + barMargin.bottom);
+    const fullSvg = container.append("svg")
+      .attr("width", barWidth + barMargin.left + barMargin.right)
+      .attr("height", barHeight + barMargin.top + barMargin.bottom);
 
-  barSvg = fullSvg.append("g")
-    .attr("transform", `translate(${barMargin.left},${barMargin.top})`);
+    // 🔹 جابه‌جایی خیلی کم برای دیده شدن لیبل‌ها
+    barSvg = fullSvg.append("g")
+      .attr(
+        "transform",
+        `translate(${barMargin.left + 15}, ${barMargin.top - 10})`
+      );
 
-  x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
-  x1 = d3.scaleBand().padding(0.1);
-  y  = d3.scaleLinear().range([barHeight, 0]);
+    x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
+    x1 = d3.scaleBand().padding(0.1);
+    y  = d3.scaleLinear().range([barHeight, 0]);
 
-  color = d3.scaleOrdinal()
-    .domain(activeKeys)
-    .range(["#1f77b4", "#ff7f0e"]);
+    color = d3.scaleOrdinal()
+      .domain(activeKeys)
+      .range(["#1f77b4", "#ff7f0e"]);
 
-  // Axes containers
-  barSvg.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", `translate(0, ${barHeight})`);
+    // Axes containers
+    barSvg.append("g")
+      .attr("class", "x-axis")
+      .attr("transform", `translate(0, ${barHeight})`);
 
-  barSvg.append("g")
-    .attr("class", "y-axis");
+    barSvg.append("g")
+      .attr("class", "y-axis");
 
-  // ===== ADD AXIS LABELS =====
+    // ===== AXIS LABELS =====
 
-// X Label
-barSvg.append("text")
-  .attr("class", "axis-label")
-  .attr("x", barWidth / 2)
-  .attr("y", barHeight + 45)      // کمی بالاتر
-  .attr("fill", "black")          // اجباری
-  .attr("text-anchor", "middle")
-  .style("font-size", "13px")
-  .style("font-weight", "bold")
-  .text("Age Groups");
+    // X Label
+    barSvg.append("text")
+      .attr("class", "axis-label")
+      .attr("x", barWidth / 2)
+      .attr("y", barHeight + 50)
+      .attr("fill", "#333")
+      .attr("text-anchor", "middle")
+      .style("font-size", "13px")
+      .style("font-weight", "600")
+      .text("Age Groups");
 
-// Y Label
-barSvg.append("text")
-  .attr("class", "axis-label")
-  .attr("transform", `rotate(-90)`)
-  .attr("x", -barHeight / 2)
-  .attr("y", -50)
-  .attr("fill", "black")          // اجباری
-  .attr("text-anchor", "middle")
-  .style("font-size", "13px")
-  .style("font-weight", "bold")
-  .text("Rate (%)");
-
+    // Y Label
+    barSvg.append("text")
+      .attr("class", "axis-label")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -barHeight / 2)
+      .attr("y", -55)
+      .attr("fill", "#333")
+      .attr("text-anchor", "middle")
+      .style("font-size", "13px")
+      .style("font-weight", "600")
+      .text("Rate (%)");
+  }
 
   // ===== SCALES =====
   x0.domain(ageGroups);
