@@ -1,11 +1,11 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- * + LEGEND BELOW BAR CHART (HTML BASED - INDEPENDENT)
+ * + SEPARATE LEGEND OUTSIDE CHART AREA
  */
 
 console.log("Member bar chart loaded");
 
-let barSvg, x0, x1, y, color;
+let barSvg, legendSvg, x0, x1, y, color;
 
 const barMargin = { top: 40, right: 30, bottom: 80, left: 70 };
 const barWidth  = 500 - barMargin.left - barMargin.right;
@@ -16,65 +16,99 @@ const AGE_ORDER = [
   "30-39","40-49","50-59","60-69","70-79","80+"
 ];
 
-// ===== CREATE / UPDATE LEGEND UNDER BAR CHART =====
-function updateHtmlLegend(activeKeys) {
+function initBarSVG() {
 
-  // اگر کانتینر لجند وجود نداشت، بساز
-  let container = d3.select("#bar-legend-container");
+  const container = d3.select("#bar-chart");
+  if (container.empty()) return;
 
-  if (container.empty()) {
-    container = d3.select("#bar-chart")
-      .append("div")
-      .attr("id", "bar-legend-container")
-      .style("margin-top", "10px")
-      .style("text-align", "center");
-  }
+  const fullSvg = container.append("svg")
+    .attr("width", barWidth + barMargin.left + barMargin.right)
+    .attr("height", barHeight + barMargin.top + barMargin.bottom + 40); // فضای اضافی برای لجند
 
-  const data = activeKeys.map(k => ({
+  // گروه اصلی نمودار
+  barSvg = fullSvg.append("g")
+    .attr("transform", `translate(${barMargin.left}, ${barMargin.top})`);
+
+  // 🔴 گروه مخصوص لجند — کاملاً مستقل
+  legendSvg = fullSvg.append("g")
+    .attr("class", "bar-legend")
+    .attr("transform", `translate(${barMargin.left}, 10)`);
+
+  x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
+  x1 = d3.scaleBand().padding(0.1);
+  y  = d3.scaleLinear().range([barHeight, 0]);
+
+  barSvg.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0, ${barHeight})`);
+
+  barSvg.append("g")
+    .attr("class", "y-axis");
+
+  // Labels
+  barSvg.append("text")
+    .attr("x", barWidth / 2)
+    .attr("y", barHeight + 50)
+    .attr("text-anchor", "middle")
+    .text("Age Groups");
+
+  barSvg.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -barHeight / 2)
+    .attr("y", -55)
+    .attr("text-anchor", "middle")
+    .text("Rate (%)");
+
+  console.log("SVG + LEGEND CONTAINER CREATED");
+}
+
+function updateLegend(activeKeys) {
+
+  const legendData = activeKeys.map(k => ({
     key: k,
     label:
       k === "Smoking_Prevalence" ? "Smoking" :
       k === "Drug_Experimentation" ? "Drugs" :
-      "Peer Influence",
-    color: color(k)
+      "Peer Influence"
   }));
 
-  const items = container.selectAll(".bar-legend-item")
-    .data(data);
+  const items = legendSvg.selectAll(".legend-item")
+    .data(legendData);
 
   items.exit().remove();
 
   const enter = items.enter()
-    .append("div")
-    .attr("class", "bar-legend-item")
-    .style("display", "inline-flex")
-    .style("align-items", "center")
-    .style("gap", "6px")
-    .style("margin-right", "12px")
+    .append("g")
+    .attr("class", "legend-item");
+
+  enter.append("rect")
+    .attr("width", 14)
+    .attr("height", 14)
+    .attr("rx", 3);
+
+  enter.append("text")
+    .attr("x", 20)
+    .attr("y", 12)
     .style("font-size", "12px");
-
-  enter.append("div")
-    .style("width", "12px")
-    .style("height", "12px")
-    .style("border-radius", "3px");
-
-  enter.append("span");
 
   const merged = enter.merge(items);
 
-  merged.select("div")
-    .style("background", d => d.color);
+  merged
+    .attr("transform", (d,i) => `translate(${i * 120}, 0)`);
 
-  merged.select("span")
+  merged.select("rect")
+    .attr("fill", d => color(d.key));
+
+  merged.select("text")
     .text(d => d.label);
+
+  console.log("LEGEND UPDATED");
 }
 
 function updateBarChart(data, keys) {
 
-  if (!data || data.length === 0) return;
-
-  const container = d3.select("#bar-chart");
-  if (container.empty()) return;
+  if (!barSvg) initBarSVG();
+  if (!barSvg) return;
 
   const activeKeys = (keys && keys.length === 2)
     ? keys
@@ -84,13 +118,11 @@ function updateBarChart(data, keys) {
     .domain(activeKeys)
     .range(["#1f77b4", "#ff7f0e"]);
 
-  // 🔴 UPDATE LEGEND UNDER BAR CHART
-  updateHtmlLegend(activeKeys);
+  // 🔴 اینجا لجند ساخته می‌شود
+  updateLegend(activeKeys);
 
-  const selectedYear =
-    d3.select("#bar-year-filter").property("value");
+  const selectedYear = d3.select("#bar-year-filter").property("value");
 
-  // ===== DATA PREPARATION =====
   let processedData;
 
   if (selectedYear === "all") {
@@ -113,31 +145,6 @@ function updateBarChart(data, keys) {
     processedData.some(d => d.Age_Group === age)
   );
 
-  // ===== SVG INIT =====
-  if (!barSvg) {
-
-    const fullSvg = container.append("svg")
-      .attr("width", barWidth + barMargin.left + barMargin.right)
-      .attr("height", barHeight + barMargin.top + barMargin.bottom);
-
-    barSvg = fullSvg.append("g")
-      .attr("transform",
-        `translate(${barMargin.left},${barMargin.top})`
-      );
-
-    x0 = d3.scaleBand().range([0, barWidth]).padding(0.2);
-    x1 = d3.scaleBand().padding(0.1);
-    y  = d3.scaleLinear().range([barHeight, 0]);
-
-    barSvg.append("g")
-      .attr("class", "x-axis")
-      .attr("transform", `translate(0, ${barHeight})`);
-
-    barSvg.append("g")
-      .attr("class", "y-axis");
-  }
-
-  // ===== SCALES =====
   x0.domain(ageGroups);
   x1.domain(activeKeys).range([0, x0.bandwidth()]);
 
@@ -155,7 +162,6 @@ function updateBarChart(data, keys) {
     .transition().duration(600)
     .call(d3.axisLeft(y));
 
-  // ===== BARS =====
   const groups = barSvg.selectAll(".age-group")
     .data(ageGroups, d => d);
 
@@ -190,7 +196,6 @@ function updateBarChart(data, keys) {
     .attr("height", d => barHeight - y(d.value));
 }
 
-// ===== ONLY BAR LISTENER =====
 d3.select("#bar-year-filter").on("change", () => {
   const currentData =
     (typeof getFilteredData === "function")
