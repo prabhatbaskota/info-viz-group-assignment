@@ -1,8 +1,6 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- * 2020 → real values
- * ...
- * all  → multi-year average
+ * FIXED TOOLTIP POSITION – BAR LOCAL TOOLTIP
  */
 
 console.log("Member bar chart loaded");
@@ -17,6 +15,19 @@ const AGE_ORDER = [
   "10-14","15-19","20-24","25-29",
   "30-39","40-49","50-59","60-69","70-79","80+"
 ];
+
+// ===== CREATE LOCAL TOOLTIP FOR BAR CHART =====
+const barTooltip = d3.select("body")
+  .append("div")
+  .style("position", "absolute")
+  .style("background", "#fff")
+  .style("border", "1px solid #ccc")
+  .style("padding", "6px 8px")
+  .style("border-radius", "4px")
+  .style("font-size", "12px")
+  .style("pointer-events", "none")
+  .style("box-shadow", "0 2px 6px rgba(0,0,0,0.2)")
+  .style("display", "none");
 
 function updateBarChart(data, keys) {
 
@@ -80,24 +91,20 @@ function updateBarChart(data, keys) {
     barSvg.append("g")
       .attr("class", "y-axis");
 
-    // ----- Axis Labels -----
+    // Labels
     barSvg.append("text")
       .attr("x", barWidth / 2)
       .attr("y", barHeight + 50)
-      .attr("fill", "#333")
       .attr("text-anchor", "middle")
       .style("font-size", "13px")
-      .style("font-weight", "600")
       .text("Age Groups");
 
     barSvg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -barHeight / 2)
       .attr("y", -55)
-      .attr("fill", "#333")
       .attr("text-anchor", "middle")
       .style("font-size", "13px")
-      .style("font-weight", "600")
       .text("Rate (%)");
   }
 
@@ -114,16 +121,13 @@ function updateBarChart(data, keys) {
   // ===== AXES =====
   barSvg.select(".x-axis")
     .transition().duration(600)
-    .call(d3.axisBottom(x0))
-    .selectAll("text")
-    .attr("transform", "rotate(-30)")
-    .style("text-anchor", "end");
+    .call(d3.axisBottom(x0));
 
   barSvg.select(".y-axis")
     .transition().duration(600)
     .call(d3.axisLeft(y));
 
-  // ===== GROUPS =====
+  // ===== BARS =====
   const groups = barSvg.selectAll(".age-group")
     .data(ageGroups, d => d);
 
@@ -136,7 +140,6 @@ function updateBarChart(data, keys) {
   const groupsMerged = groupsEnter.merge(groups)
     .attr("transform", d => `translate(${x0(d)},0)`);
 
-  // ===== BARS =====
   const bars = groupsMerged.selectAll("rect")
     .data(age => {
       const row = processedData.find(d => d.Age_Group === age);
@@ -150,28 +153,6 @@ function updateBarChart(data, keys) {
 
   bars.exit().remove();
 
-  const tooltip = d3.select(".heatmap-tooltip");
-
-  // helper: keep tooltip inside screen
-  function positionTooltip(event) {
-    const pad = 12;
-
-    let left = event.clientX + pad;
-    let top  = event.clientY - 20;
-
-    const node = tooltip.node();
-    if (!node) return;
-
-    const tt = node.getBoundingClientRect();
-
-    // prevent overflow right/bottom
-    if (left + tt.width > window.innerWidth) left = event.clientX - tt.width - pad;
-    if (top + tt.height > window.innerHeight) top = window.innerHeight - tt.height - pad;
-    if (top < pad) top = pad;
-
-    tooltip.style("left", left + "px").style("top", top + "px");
-  }
-
   bars.enter()
     .append("rect")
     .attr("x", d => x1(d.key))
@@ -181,27 +162,29 @@ function updateBarChart(data, keys) {
     .attr("fill", d => color(d.key))
     .merge(bars)
 
-    // ✅ FIXED TOOLTIP: use clientX/clientY (works with position: fixed)
+    // ===== PERFECT TOOLTIP =====
     .on("mouseover", function(event, d) {
-      tooltip
+
+      barTooltip
         .style("display", "block")
         .html(`
           <strong>${d.ageGroup}</strong><br>
           ${d.key.replace("_"," ")}: ${d.value.toFixed(1)}%<br>
           Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
         `);
+    })
 
-      positionTooltip(event);
-    })
     .on("mousemove", function(event) {
-      positionTooltip(event);
+      barTooltip
+        .style("left", (event.pageX + 12) + "px")
+        .style("top", (event.pageY - 20) + "px");
     })
+
     .on("mouseout", function() {
-      tooltip.style("display","none");
+      barTooltip.style("display","none");
     })
 
     .transition().duration(600)
-    .attr("x", d => x1(d.key))
     .attr("y", d => y(d.value))
     .attr("height", d => barHeight - y(d.value));
 }
