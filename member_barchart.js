@@ -1,9 +1,8 @@
 /**
- * Member 2 — Grouped Bar Chart
- * - Year filter (All Years or Single Year)
- * - Works with dashboard gender filter
- * - Cross-brushing with heatmaps
- * - Metric filter support
+ * Member 2 — Grouped Bar Chart (Year Filter + Cross-Brushing)
+ * Can show:
+ *  - All Years Average (2020–2024)
+ *  - OR single selected year
  */
 
 console.log("Member bar chart loaded");
@@ -12,7 +11,6 @@ let barSvg, barX0, barX1, barY, barColor;
 
 function updateBarChart(data, keys) {
 
-    // ---- SAFETY ----
     if (!data || data.length === 0) return;
 
     const container = d3.select("#bar-chart");
@@ -58,17 +56,20 @@ function updateBarChart(data, keys) {
             .text("Rate (%)");
     }
 
-    // =====================================================
-    // 1) YEAR FILTER LOGIC  ←←← FIXED PART
-    // =====================================================
-
+    // ======================================================
+    // 1) READ YEAR FILTER
+    // ======================================================
     const selectedYear = d3.select("#bar-year-filter").property("value");
 
-    let dataForChart;
+    let dataForChart = [];
+
+    // ======================================================
+    // 2) FILTER LOGIC
+    // ======================================================
 
     if (selectedYear === "all") {
 
-        // ---- Multi-year average ----
+        // ----- MULTI-YEAR AVERAGE -----
         dataForChart = d3.rollups(
             data,
             v => ({
@@ -84,11 +85,11 @@ function updateBarChart(data, keys) {
 
     } else {
 
-        // ---- Single year ----
-        const yearNum = +selectedYear;
+        // ----- SINGLE YEAR -----
+        const yearStr = String(selectedYear);
 
         dataForChart = data
-            .filter(d => d.Year === yearNum)
+            .filter(d => String(d.Year) === yearStr)
             .map(d => ({
                 Age_Group: d.Age_Group,
                 Smoking_Prevalence: +d.Smoking_Prevalence,
@@ -96,6 +97,9 @@ function updateBarChart(data, keys) {
             }));
     }
 
+    // ======================================================
+    // 3) AGE ORDER
+    // ======================================================
     const AGE_ORDER = [
         "10-14","15-19","20-24","25-29",
         "30-39","40-49","50-59","60-69","70-79","80+"
@@ -109,10 +113,9 @@ function updateBarChart(data, keys) {
         ? keys
         : ["Smoking_Prevalence", "Drug_Experimentation"];
 
-    // =====================================================
-    // 2) SCALES
-    // =====================================================
-
+    // ======================================================
+    // 4) SCALES
+    // ======================================================
     barX0.domain(ageGroups);
     barX1.domain(activeKeys).range([0, barX0.bandwidth()]);
     barColor.domain(activeKeys);
@@ -123,10 +126,9 @@ function updateBarChart(data, keys) {
 
     barY.domain([0, maxY]).nice();
 
-    // =====================================================
-    // 3) AXES
-    // =====================================================
-
+    // ======================================================
+    // 5) AXES
+    // ======================================================
     barSvg.select(".x-axis")
         .transition().duration(750)
         .call(d3.axisBottom(barX0))
@@ -138,10 +140,9 @@ function updateBarChart(data, keys) {
         .transition().duration(750)
         .call(d3.axisLeft(barY).ticks(5).tickFormat(d => d + "%"));
 
-    // =====================================================
-    // 4) GROUPS
-    // =====================================================
-
+    // ======================================================
+    // 6) GROUPS
+    // ======================================================
     const groupSel = barSvg.selectAll(".age-group")
         .data(ageGroups, d => d);
 
@@ -155,10 +156,9 @@ function updateBarChart(data, keys) {
         .transition().duration(750)
         .attr("transform", d => `translate(${barX0(d)},0)`);
 
-    // =====================================================
-    // 5) BARS
-    // =====================================================
-
+    // ======================================================
+    // 7) BARS
+    // ======================================================
     const bars = barSvg.selectAll(".age-group")
         .selectAll("rect")
         .data(age => {
@@ -172,7 +172,8 @@ function updateBarChart(data, keys) {
 
     bars.exit().remove();
 
-    bars.enter().append("rect")
+    bars.enter()
+        .append("rect")
         .attr("class", "bar")
         .attr("data-age", d => d.ageGroup)
         .attr("x", d => barX1(d.key))
@@ -182,21 +183,18 @@ function updateBarChart(data, keys) {
         .attr("fill", d => barColor(d.key))
         .merge(bars)
 
+        // ---- Cross-Brushing ----
         .on("mouseover", function(event, d) {
-
             if (window.highlightData)
                 window.highlightData("age", d.ageGroup);
 
             d3.select(".heatmap-tooltip")
                 .style("display", "block")
-                .html(
-                    `<strong>Age: ${d.ageGroup}</strong><br>
-                     ${d.key.replace(/_/g," ")}: ${d.value.toFixed(1)}%`
-                );
+                .html(`<strong>Age: ${d.ageGroup}</strong><br>
+                       ${d.key.replace(/_/g," ")}: ${d.value.toFixed(1)}%`);
         })
 
         .on("mouseout", function() {
-
             if (window.resetHighlight)
                 window.resetHighlight();
 
@@ -218,15 +216,15 @@ function updateBarChart(data, keys) {
         .attr("fill", d => barColor(d.key));
 }
 
-// =====================================================
-// 6) YEAR FILTER LISTENER  ←←← FIXED
-// =====================================================
-
+// ======================================================
+// LISTENER FOR YEAR DROPDOWN
+// ======================================================
 d3.select("#bar-year-filter").on("change", () => {
 
-    const currentData = typeof getFilteredData === "function"
-        ? getFilteredData()
-        : [];
+    const currentData =
+        (typeof getFilteredData === "function")
+            ? getFilteredData()
+            : [];
 
     updateBarChart(currentData, null);
 });
