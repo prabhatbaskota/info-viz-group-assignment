@@ -161,32 +161,36 @@ function updateBarChart(data, keys) {
     .attr("height", barHeight - y(0))
     .attr("fill", d => color(d.key))
     .merge(bars)
-    .on("mouseover", (event, d) => {
 
-  const [xPos, yPos] = d3.pointer(event);
+    // ===== FIXED TOOLTIP POSITION =====
+    .on("mouseover", function(event, d) {
 
-  tooltip
-    .style("display", "block")
-    .html(`
-      <strong>${d.ageGroup}</strong><br>
-      ${d.key.replace("_"," ")}: ${d.value.toFixed(1)}%<br>
-      Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
-    `)
-    .style("left", (event.pageX + 12) + "px")
-    .style("top", (event.pageY - 20) + "px");
-})
-.on("mousemove", (event) => {
-  tooltip
-    .style("left", (event.pageX + 12) + "px")
-    .style("top", (event.pageY - 20) + "px");
-})
-.on("mouseout", () => {
-  tooltip.style("display","none");
-})
+      const chartBox = container.node().getBoundingClientRect();
+
+      tooltip
+        .style("display", "block")
+        .html(`
+          <strong>${d.ageGroup}</strong><br>
+          ${d.key.replace("_"," ")}: ${d.value.toFixed(1)}%<br>
+          Year: ${selectedYear === "all" ? "2020–2024 (avg)" : selectedYear}
+        `)
+        .style("left", (chartBox.left + x0(d.ageGroup) + x1(d.key) + 20) + "px")
+        .style("top",  (chartBox.top + y(d.value) - 10) + "px");
+    })
+
+    .on("mousemove", function(event, d) {
+
+      const chartBox = container.node().getBoundingClientRect();
+
+      tooltip
+        .style("left", (chartBox.left + x0(d.ageGroup) + x1(d.key) + 20) + "px")
+        .style("top",  (chartBox.top + y(d.value) - 10) + "px");
+    })
 
     .on("mouseout", () => {
       tooltip.style("display","none");
     })
+
     .transition().duration(600)
     .attr("x", d => x1(d.key))
     .attr("y", d => y(d.value))
