@@ -18,7 +18,7 @@ const AGE_ORDER = [
   "30-39","40-49","50-59","60-69","70-79","80+"
 ];
 
-// ===== LOCAL BAR TOOLTIP (PROJECT STYLE) =====
+// ===== LOCAL BAR TOOLTIP =====
 const barTooltip = d3.select("body")
   .append("div")
   .style("position", "absolute")
@@ -29,7 +29,6 @@ const barTooltip = d3.select("body")
   .style("font-size", "12px")
   .style("pointer-events", "none")
   .style("box-shadow", "0 3px 8px rgba(0,0,0,0.25)")
-  .style("border-left", "4px solid #1f77b4")
   .style("display", "none");
 
 function updateBarChart(data, keys) {
@@ -84,7 +83,7 @@ function updateBarChart(data, keys) {
     y  = d3.scaleLinear().range([barHeight, 0]);
 
     color = d3.scaleOrdinal()
-      .domain(activeKeys)
+      .domain(["Smoking_Prevalence", "Drug_Experimentation"])
       .range(["#1f77b4", "#ff7f0e"]);
 
     barSvg.append("g")
@@ -94,7 +93,7 @@ function updateBarChart(data, keys) {
     barSvg.append("g")
       .attr("class", "y-axis");
 
-    // Labels
+    // ----- Axis Labels -----
     barSvg.append("text")
       .attr("x", barWidth / 2)
       .attr("y", barHeight + 50)
@@ -109,6 +108,35 @@ function updateBarChart(data, keys) {
       .attr("text-anchor", "middle")
       .style("font-size", "13px")
       .text("Rate (%)");
+
+    // ===== LEGEND (INDEPENDENT) =====
+    const legend = barSvg.append("g")
+      .attr("class", "bar-legend")
+      .attr("transform", `translate(${barWidth - 140}, 0)`);
+
+    const legendData = [
+      { key: "Smoking_Prevalence", label: "Smoking" },
+      { key: "Drug_Experimentation", label: "Drugs" }
+    ];
+
+    const items = legend.selectAll(".legend-item")
+      .data(legendData)
+      .enter()
+      .append("g")
+      .attr("class", "legend-item")
+      .attr("transform", (d,i) => `translate(0, ${i*22})`);
+
+    items.append("rect")
+      .attr("width", 14)
+      .attr("height", 14)
+      .attr("rx", 3)
+      .attr("fill", d => color(d.key));
+
+    items.append("text")
+      .attr("x", 20)
+      .attr("y", 11)
+      .style("font-size", "12px")
+      .text(d => d.label);
   }
 
   // ===== SCALES =====
@@ -121,7 +149,6 @@ function updateBarChart(data, keys) {
 
   y.domain([0, maxY]).nice();
 
-  // ===== AXES =====
   barSvg.select(".x-axis")
     .transition().duration(600)
     .call(d3.axisBottom(x0));
@@ -136,11 +163,10 @@ function updateBarChart(data, keys) {
 
   groups.exit().remove();
 
-  const groupsEnter = groups.enter()
+  const groupsMerged = groups.enter()
     .append("g")
-    .attr("class", "age-group");
-
-  const groupsMerged = groupsEnter.merge(groups)
+    .attr("class", "age-group")
+    .merge(groups)
     .attr("transform", d => `translate(${x0(d)},0)`);
 
   const bars = groupsMerged.selectAll("rect")
@@ -156,42 +182,14 @@ function updateBarChart(data, keys) {
 
   bars.exit().remove();
 
-  // ===== VALUE TEXT INSIDE BARS =====
-  const texts = groupsMerged.selectAll(".bar-value")
-    .data(d => {
-      const row = processedData.find(r => r.Age_Group === d);
-      return activeKeys.map(key => ({
-        key,
-        value: row ? +row[key] || 0 : 0
-      }));
-    });
-
-  texts.exit().remove();
-
-  texts.enter()
-    .append("text")
-    .attr("class", "bar-value")
-    .merge(texts)
-    .attr("x", d => x1(d.key) + x1.bandwidth()/2)
-    .attr("y", d => y(d.value) + 14)
-    .attr("text-anchor", "middle")
-    .style("fill", "#fff")
-    .style("font-size", "11px")
-    .style("font-weight", "bold")
-    .text(d => d.value.toFixed(1));
-
   bars.enter()
     .append("rect")
     .attr("x", d => x1(d.key))
     .attr("width", x1.bandwidth())
-    .attr("y", y(0))
-    .attr("height", barHeight - y(0))
     .attr("fill", d => color(d.key))
     .merge(bars)
 
-    // ===== SMART TOOLTIP =====
     .on("mouseover", function(event, d) {
-
       barTooltip
         .style("display", "block")
         .style("border-left", `4px solid ${color(d.key)}`)
