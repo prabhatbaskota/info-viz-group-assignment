@@ -1,6 +1,6 @@
 /**
  * Member 2 — Grouped Bar Chart WITH YEAR FILTER
- * + LEGEND OUTSIDE SVG (HTML BASED)
+ * + LEGEND BELOW BAR CHART (HTML BASED - INDEPENDENT)
  */
 
 console.log("Member bar chart loaded");
@@ -16,10 +16,19 @@ const AGE_ORDER = [
   "30-39","40-49","50-59","60-69","70-79","80+"
 ];
 
-// ===== CREATE HTML LEGEND =====
+// ===== CREATE / UPDATE LEGEND UNDER BAR CHART =====
 function updateHtmlLegend(activeKeys) {
 
-  const container = d3.select("#bar-legend-container");
+  // اگر کانتینر لجند وجود نداشت، بساز
+  let container = d3.select("#bar-legend-container");
+
+  if (container.empty()) {
+    container = d3.select("#bar-chart")
+      .append("div")
+      .attr("id", "bar-legend-container")
+      .style("margin-top", "10px")
+      .style("text-align", "center");
+  }
 
   const data = activeKeys.map(k => ({
     key: k,
@@ -75,7 +84,7 @@ function updateBarChart(data, keys) {
     .domain(activeKeys)
     .range(["#1f77b4", "#ff7f0e"]);
 
-  // 🔴 UPDATE EXTERNAL LEGEND
+  // 🔴 UPDATE LEGEND UNDER BAR CHART
   updateHtmlLegend(activeKeys);
 
   const selectedYear =
